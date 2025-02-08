@@ -27,7 +27,7 @@ deploy:
   before_script:
     - docker login ${REGISTRY_URL} -u ${REGISTRY_USER} -p ${REGISTRY_PASSOWRD}
   script:
-    - docker network create backend_qlnh_network
+    - docker network inspect backend_qlnh_network || docker network create backend_qlnh_network
     - docker pull $DOCKER_IMAGE
     - docker rm -f $DOCKER_CONTAINER
     - docker run -d --name $DOCKER_CONTAINER -p 11000:11000 --network backend_qlnh_network $DOCKER_IMAGE
