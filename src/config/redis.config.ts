@@ -1,5 +1,5 @@
-import Redis from 'ioredis'
-import { configService } from './configService'
+import redis from 'ioredis'
+import 'dotenv/config'
 
 const statusConnectRedis = {
   CONNECT: 'connect',
@@ -22,13 +22,12 @@ const handleEventConnection = ({ connectionRedis }: { connectionRedis: any }) =>
     console.log(`connection Redis - Connection status: error ${err}`)
   })
 }
-
 export const initRedis = () => {
-  const instanceRedis = new Redis({
-    port: configService.get<number>('REDIS_PORT'),
-    host: configService.get<string>('REDIS_HOST'),
-    username: configService.get<string>('REDIS_USERNAME'),
-    password: configService.get<string>('REDIS_PASSWORD')
+  const instanceRedis = new redis({
+    port: Number(process.env.REDIS_PORT),
+    host: process.env.REDIS_HOST,
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD
   })
 
   const client = { instanceConnect: instanceRedis }

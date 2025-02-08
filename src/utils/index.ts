@@ -1,5 +1,4 @@
 import md5 from 'md5'
-import { configService } from 'src/config/configService'
 
 export const formatDate = (date: Date): string => {
   const hours = String(date.getHours()).padStart(2, '0')
@@ -17,7 +16,7 @@ const getRandomNonce = (num: number) => {
 }
 
 export function genSignEndPoint() {
-  const keyToken = configService.get<string>('KEY_TOKEN')
+  const keyToken = process.env.KEY_TOKEN
   const versionToken = 'v1'
   const headers: any = {}
   const stime = Date.now()

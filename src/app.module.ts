@@ -23,7 +23,6 @@ import { StockOutModule } from './stok-out/stock-out.module'
 import { StokOutItemModule } from './stok-out-item/stok-out-item.module'
 import { StockOutEntity, StockOutSubscriber } from './stok-out/entities/stock-out.entity'
 import { StockOutItemEntity, StockOutItemSubscriber } from './stok-out-item/entities/stock-out-item.entity'
-import * as path from 'path'
 
 @Module({
   imports: [

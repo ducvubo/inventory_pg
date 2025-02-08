@@ -19,7 +19,6 @@ import { StockInItemEntity } from 'src/stock-in-item/entities/stock-in-item.enti
 import { UpdateStockInDto } from './dto/update-stock-in.dto'
 import { StockInItemQuery } from 'src/stock-in-item/entities/stock-in-item.query'
 import { ResultPagination } from 'src/interface/resultPagination.interface'
-import { configService } from 'src/config/configService'
 
 @Injectable()
 export class StockInService implements IStockInService, OnModuleInit {
@@ -37,7 +36,7 @@ export class StockInService implements IStockInService, OnModuleInit {
     options: {
       package: 'EmployeeProto',
       protoPath: join(__dirname, '../grpc/proto/employee.proto'),
-      url: configService.get<string>('URL_SERVICE_GRPC')
+      url: process.env.URL_SERVICE_GRPC
     }
   })
   client: ClientGrpc

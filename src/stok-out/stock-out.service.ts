@@ -19,7 +19,6 @@ import { UpdateStockOutDto } from './dto/update-stock-in.dto'
 import { IAccount } from 'src/guard/interface/account.interface'
 import { ResultPagination } from 'src/interface/resultPagination.interface'
 import { IStockOutService } from './stock-out.interface'
-import { configService } from 'src/config/configService'
 
 @Injectable()
 export class StockOutService implements IStockOutService {
@@ -37,7 +36,7 @@ export class StockOutService implements IStockOutService {
     options: {
       package: 'EmployeeProto',
       protoPath: join(__dirname, '../grpc/proto/employee.proto'),
-      url: configService.get<string>('URL_SERVICE_GRPC')
+      url: process.env.URL_SERVICE_GRPC
     }
   })
   client: ClientGrpc

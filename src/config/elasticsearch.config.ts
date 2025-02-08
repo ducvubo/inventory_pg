@@ -1,5 +1,13 @@
+// import { Client } from '@elastic/elasticsearch'
+
+// const clientElasticsearch = new Client({
+//   node: 'http://localhost:9200'
+// })
+
+// export default clientElasticsearch
+
+import 'dotenv/config'
 import { Client } from '@elastic/elasticsearch'
-import { configService } from './configService'
 
 const handleEventConnection = async ({ connectionElasticsearch }: { connectionElasticsearch: any }) => {
   try {
@@ -11,13 +19,12 @@ const handleEventConnection = async ({ connectionElasticsearch }: { connectionEl
     console.log('Error connecting to Elasticsearch:', error)
   }
 }
-
 export const initElasticsearch = () => {
   const instanceElasticsearch = new Client({
-    node: configService.get<string>('ELASTICSEARCH_NODE'),
+    node: process.env.ELASTICSEARCH_NODE,
     auth: {
-      username: configService.get<string>('ELASTICSEARCH_USER_NAME'),
-      password: configService.get<string>('ELASTICSEARCH_PASSWORD')
+      username: process.env.ELASTICSEARCH_USER_NAME,
+      password: process.env.ELASTICSEARCH_PASSWORD
     },
     tls: {
       rejectUnauthorized: false
