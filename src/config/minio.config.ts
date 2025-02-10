@@ -15,8 +15,8 @@ export const initMinio = () => {
     endPoint: '160.191.51.57',
     port: 9000,
     useSSL: false,
-    accessKey: 'mmEljDicWR12VcIvWkNi',
-    secretKey: 'V4hyLx3hgryDVT7hLxPCwPWMkt96SHxuolAFvH1L'
+    accessKey: '4t4DfspYylq2GefcOTS4',
+    secretKey: 'Ureh7p0PwtLnfN1g8W0Zx8C8uWjCmSbwmUtKRnWn'
   })
 
   const client = { instanceConnect: instanceMinio }
