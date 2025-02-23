@@ -28,4 +28,4 @@ jobs:
 
       - name: Push to GitLab
         run: |
-          git push -uf https://oauth2:glpat-PHsSmufdFjTscqkGQgpS@gitlab.taphoaictu.id.vn/vuducbo/inventory_pg.git main
+          git push -uf https://oauth2:glpat-ZthLA4kebxD7g_5xtnTq@gitlab.taphoaictu.id.vn/vuducbo/inventory_pg.git main

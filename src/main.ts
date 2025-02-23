@@ -25,8 +25,8 @@ async function bootstrap() {
   initRedis()
   initElasticsearch()
   // initOpenSearch()
-  initKafka()
-  initMinio()
+  // initKafka()
+  // initMinio()
 
   app.useGlobalInterceptors(new TransformIntercaptor(reflector))
   app.useGlobalInterceptors(new IdUserGuestInterceptor(reflector))
