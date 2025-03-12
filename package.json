@@ -34,6 +34,7 @@
     "@opensearch-project/opensearch": "^2.13.0",
     "@protobuf-ts/plugin": "^2.9.4",
     "@protobuf-ts/runtime": "^2.9.4",
+    "axios": "^1.8.2",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

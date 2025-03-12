@@ -30,6 +30,9 @@ export const FOOD_COMBO_ITEM_ELASTICSEARCH_INDEX = 'food-combo-item'
 export const WORKING_SHIFT_ELASTICSEARCH_INDEX = 'working-shift'
 export const SHIFT_ASSIGNMENT_ELASTICHSEARCH_INDEX = 'shift-assignment'
 
+export const TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX = 'ticket-guest-restaurant'
+export const TICKET_GUEST_RESTAURANT_REPLICES_ELASTICSEARCH_INDEX = 'ticket-guest-restaurant-replices'
+
 export const NOTIFICATION_EMPLOYEE_ELASTICSEARCH_INDEX = 'notification-employee'
 
 export const SUPPLIER_ELASTICSEARCH_INDEX = 'suppliers'

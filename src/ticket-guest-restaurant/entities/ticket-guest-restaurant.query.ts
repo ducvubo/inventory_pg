@@ -1,0 +1,199 @@
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { getElasticsearch } from "src/config/elasticsearch.config";
+import { TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX } from "src/constants/index.elasticsearch";
+import { saveLogSystem } from "src/log/sendLog.els";
+import { indexElasticsearchExists } from "src/utils/elasticsearch";
+import { TicketGuestRestaurantEntity } from "./ticket-guest-restaurant.entity";
+import { IAccount } from "src/guard/interface/account.interface";
+import { ResultPagination } from "src/interface/resultPagination.interface";
+import { ServerErrorDefault } from "src/utils/errorResponse";
+
+
+@Injectable()
+export class TicketGuestRestaurantQuery {
+  private readonly elasticSearch = getElasticsearch().instanceConnect
+  constructor(private readonly configService: ConfigService) { }
+
+  async getTicketGuestRestaurantPagination(
+    {
+      id_user_guest, pageIndex, pageSize, q, tkgr_priority, tkgr_status, tkgr_type, tkgr_user_id
+    }: {
+      pageSize: number,
+      pageIndex: number,
+      q: string,
+      tkgr_status: string,
+      tkgr_priority: string,
+      tkgr_type: string,
+      id_user_guest: string
+      tkgr_user_id: number
+    }
+  ):
+    Promise<{
+      meta: {
+        pageIndex: number,
+        pageSize: number,
+        totalPage: number,
+        totalItem: number
+      },
+      result: TicketGuestRestaurantEntity[]
+    }> {
+    try {
+      const indexExist = await indexElasticsearchExists(TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX)
+
+      if (!indexExist) {
+        return {
+          meta: {
+            pageIndex,
+            pageSize,
+            totalPage: 0,
+            totalItem: 0
+          },
+          result: []
+        }
+      }
+
+      //trường nào có thì mới cho vào tìm kiếm k thì loại bỏ vàtìm các bản ghi thỏa màn id_user_guest hoặc tkgr_user_id còn lại tất cả các điều kiện khác phải đúng theo yêu cầù
+      const must: any = [
+        {
+          bool: {
+            should: [
+              { match: { id_user_guest } },
+              { match: { tkgr_user_id } }
+            ]
+          }
+        }
+      ]
+      if (tkgr_priority) {
+        must.push({ match: { tkgr_priority } })
+      }
+      if (tkgr_status) {
+        must.push({ match: { tkgr_status } })
+      }
+      if (tkgr_type) {
+        must.push({ match: { tkgr_type } })
+      }
+      if (q) {
+        must.push({ match: { q } })
+      }
+
+      const result = await this.elasticSearch.search({
+        index: TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX,
+        body: {
+          query: {
+            bool: {
+              must
+            }
+          },
+          from: (pageIndex - 1) * pageSize,
+          size: pageSize
+        }
+      }) as any
+
+      return {
+        meta: {
+          pageIndex: pageIndex,
+          pageSize,
+          totalPage: Math.ceil(result.hits?.hits.total.value / pageSize),
+          totalItem: result.hits?.hits.total.value
+        },
+        result: result.hits?.hits.map((item: any) => item._source)
+      }
+    } catch (error) {
+      saveLogSystem({
+        action: 'get',
+        class: 'TicketGuestRestaurantQuery',
+        function: 'getTicketGuestRestaurantPagination',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+    }
+  }
+
+  async getTicketRestaurant({
+    pageSize, pageIndex, q, tkgr_priority, tkgr_status, tkgr_type
+  }: {
+    pageSize: number,
+    pageIndex: number,
+    q: string,
+    tkgr_priority: string,
+    tkgr_status: string,
+    tkgr_type: string,
+  }, account: IAccount): Promise<ResultPagination<TicketGuestRestaurantEntity>> {
+    try {
+      const indexExist = await indexElasticsearchExists(TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX)
+
+      if (!indexExist) {
+        return {
+          meta: {
+            current: pageIndex,
+            pageSize,
+            totalPage: 0,
+            totalItem: 0
+          },
+          result: []
+        }
+      }
+      // account.account_restaurant_id
+      const must: any = [
+        {
+          bool: {
+            should: [
+              { match: { tkgr_res_id: account.account_restaurant_id } }
+            ]
+          }
+        }
+      ]
+      if (tkgr_priority) {
+        must.push({ match: { tkgr_priority } })
+      }
+      if (tkgr_status) {
+        must.push({ match: { tkgr_status } })
+      }
+      if (tkgr_type) {
+        must.push({ match: { tkgr_type } })
+      }
+      if (q) {
+        must.push({ match: { q } })
+      }
+
+      const result = await this.elasticSearch.search({
+        index: TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX,
+        body: {
+          query: {
+            bool: {
+              must
+            }
+          },
+          from: (pageIndex - 1) * pageSize,
+          size: pageSize
+        }
+      }) as any
+
+      return {
+        meta: {
+          current: pageIndex,
+          pageSize,
+          totalPage: Math.ceil(result.body.hits.total.value / pageSize),
+          totalItem: result.body.hits.total.value
+        },
+        result: result.body.hits.hits.map((item: any) => item._source)
+      }
+    } catch (error) {
+      saveLogSystem({
+        action: 'getTicketRestaurant',
+        class: 'TicketGuestRestaurantQuery',
+        function: 'getTicketRestaurant',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+      throw new ServerErrorDefault(error)
+    }
+  }
+
+
+}

@@ -23,6 +23,12 @@ import { StockOutModule } from './stok-out/stock-out.module'
 import { StokOutItemModule } from './stok-out-item/stok-out-item.module'
 import { StockOutEntity, StockOutSubscriber } from './stok-out/entities/stock-out.entity'
 import { StockOutItemEntity, StockOutItemSubscriber } from './stok-out-item/entities/stock-out-item.entity'
+import {
+  TicketGuestRestaurantEntity,
+  TicketGuestRestaurantSubscriber
+} from './ticket-guest-restaurant/entities/ticket-guest-restaurant.entity'
+import { TicketGuestRestaurantModule } from './ticket-guest-restaurant/ticket-guest-restaurant.module'
+import { TickGuestRestaurantReplicesModule } from './tick-guest-restaurant-replices/tick-guest-restaurant-replices.module'
 
 @Module({
   imports: [
@@ -45,7 +51,8 @@ import { StockOutItemEntity, StockOutItemSubscriber } from './stok-out-item/enti
         StockInEntity,
         StockInItemEntity,
         StockOutEntity,
-        StockOutItemEntity
+        StockOutItemEntity,
+        TicketGuestRestaurantEntity
       ],
       subscribers: [
         SupplierSubscriber,
@@ -56,7 +63,8 @@ import { StockOutItemEntity, StockOutItemSubscriber } from './stok-out-item/enti
         StockInSubscriber,
         StockInItemSubscriber,
         StockOutSubscriber,
-        StockOutItemSubscriber
+        StockOutItemSubscriber,
+        TicketGuestRestaurantSubscriber
       ],
       synchronize: true
     }),
@@ -69,7 +77,9 @@ import { StockOutItemEntity, StockOutItemSubscriber } from './stok-out-item/enti
     StockInModule,
     StockInItemModule,
     StockOutModule,
-    StokOutItemModule
+    StokOutItemModule,
+    TicketGuestRestaurantModule,
+    TickGuestRestaurantReplicesModule
   ],
   controllers: [AppController],
   providers: [AppService]
