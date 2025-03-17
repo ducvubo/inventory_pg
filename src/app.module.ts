@@ -52,7 +52,7 @@ import { TickGuestRestaurantReplicesModule } from './tick-guest-restaurant-repli
         StockInItemEntity,
         StockOutEntity,
         StockOutItemEntity,
-        TicketGuestRestaurantEntity
+        // TicketGuestRestaurantEntity
       ],
       subscribers: [
         SupplierSubscriber,
@@ -64,7 +64,7 @@ import { TickGuestRestaurantReplicesModule } from './tick-guest-restaurant-repli
         StockInItemSubscriber,
         StockOutSubscriber,
         StockOutItemSubscriber,
-        TicketGuestRestaurantSubscriber
+        // TicketGuestRestaurantSubscriber
       ],
       synchronize: true
     }),
