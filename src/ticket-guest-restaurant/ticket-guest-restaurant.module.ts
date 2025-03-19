@@ -10,5 +10,6 @@ import { TicketGuestRestaurantRepo } from './entities/ticket-guest-restaurant.re
   imports: [TypeOrmModule.forFeature([TicketGuestRestaurantEntity])],
   controllers: [TicketGuestRestaurantController],
   providers: [TicketGuestRestaurantService, TicketGuestRestaurantQuery, TicketGuestRestaurantRepo],
+  exports: [TicketGuestRestaurantService, TicketGuestRestaurantQuery, TicketGuestRestaurantRepo]
 })
 export class TicketGuestRestaurantModule { }

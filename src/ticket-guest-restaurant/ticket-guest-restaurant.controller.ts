@@ -1,9 +1,13 @@
-import { Body, Controller, Get, Post, Request } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, Request, UseGuards } from '@nestjs/common';
 import { TicketGuestRestaurantService } from './ticket-guest-restaurant.service';
-import { ResponseMessage } from 'src/decorator/customize';
+import { Acccount, ResponseMessage } from 'src/decorator/customize';
 import { CreateTicketGuestRestaurantDto } from './dto/create-ticket-guest-restaurant.dto';
 import { Request as RequestExpress } from 'express'
 import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { IAccount } from 'src/guard/interface/account.interface';
+import { ResultPagination } from 'src/interface/resultPagination.interface';
+import { TicketGuestRestaurantEntity } from './entities/ticket-guest-restaurant.entity';
+import { AccountAuthGuard } from 'src/guard/account.guard';
 
 @Controller('ticket-guest-restaurant')
 export class TicketGuestRestaurantController {
@@ -19,5 +23,44 @@ export class TicketGuestRestaurantController {
     return await this.ticketGuestRestaurantService.guestCreateTicket(createTicketGuestRestaurantDto, req.headers['x-cl-id'] as string)
   }
 
-  
+  @Get('/get-ticket-restaurants')
+  @UseGuards(AccountAuthGuard)
+  @ResponseMessage("Lấy danh sách ticket thành công")
+  async getTicketGuestRestaurant(
+    @Acccount() account: IAccount,
+    @Query('current') pageIndex: string = '1',
+    @Query('pageSize') pageSize: string = '10',
+    @Query('q') q: string = '',
+    @Query('tkgr_priority') tkgr_priority: string = '',
+    @Query('tkgr_status') tkgr_status: string = '',
+    @Query('tkgr_type') tkgr_type: string = ''
+  ): Promise<ResultPagination<TicketGuestRestaurantEntity>> {
+    return await this.ticketGuestRestaurantService.getTicketRestaurant({
+      pageIndex: parseInt(pageIndex),
+      pageSize: parseInt(pageSize),
+      q,
+      tkgr_priority,
+      tkgr_status,
+      tkgr_type,
+    }, account)
+  }
+
+  @Get('/get-ticket-restaurants/:id')
+  @UseGuards(AccountAuthGuard)
+  @ResponseMessage("Lấy thông tin ticket thành công")
+  async getTicketGuestRestaurantById(
+    @Param('id') id: string
+  ): Promise<TicketGuestRestaurantEntity> {
+    return await this.ticketGuestRestaurantService.getTicketRestaurantById(id)
+  }
+
+  @Put('/resolved-ticket/:id')
+  @UseGuards(AccountAuthGuard)
+  @ResponseMessage("Giải quyết ticket thành công")
+  async resolvedTicket(
+    @Param('id') id: string,
+    @Acccount() account: IAccount
+  ) {
+    return await this.ticketGuestRestaurantService.resolvedTicketRestaurant(id, account)
+  }
 }

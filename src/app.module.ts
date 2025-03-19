@@ -29,6 +29,7 @@ import {
 } from './ticket-guest-restaurant/entities/ticket-guest-restaurant.entity'
 import { TicketGuestRestaurantModule } from './ticket-guest-restaurant/ticket-guest-restaurant.module'
 import { TickGuestRestaurantReplicesModule } from './tick-guest-restaurant-replices/tick-guest-restaurant-replices.module'
+import { TicketGuestRestaurantReplicesEntity, TicketGuestRestaurantReplicesSubscriber } from './tick-guest-restaurant-replices/entities/tick-guest-restaurant-replices.entity'
 
 @Module({
   imports: [
@@ -52,7 +53,8 @@ import { TickGuestRestaurantReplicesModule } from './tick-guest-restaurant-repli
         StockInItemEntity,
         StockOutEntity,
         StockOutItemEntity,
-        // TicketGuestRestaurantEntity
+        TicketGuestRestaurantEntity,
+        TicketGuestRestaurantReplicesEntity
       ],
       subscribers: [
         SupplierSubscriber,
@@ -64,7 +66,8 @@ import { TickGuestRestaurantReplicesModule } from './tick-guest-restaurant-repli
         StockInItemSubscriber,
         StockOutSubscriber,
         StockOutItemSubscriber,
-        // TicketGuestRestaurantSubscriber
+        TicketGuestRestaurantSubscriber,
+        TicketGuestRestaurantReplicesSubscriber
       ],
       synchronize: true
     }),
@@ -84,4 +87,4 @@ import { TickGuestRestaurantReplicesModule } from './tick-guest-restaurant-repli
   controllers: [AppController],
   providers: [AppService]
 })
-export class AppModule {}
+export class AppModule { }

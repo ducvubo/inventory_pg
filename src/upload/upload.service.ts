@@ -8,11 +8,11 @@ export class UploadService {
   private readonly minio = getMinio().instanceConnect;
   private readonly minioUrl = process.env.MINIO_URL || 'https://minio.taphoaictu.id.vn';
 
-  async uploadFile(file: Express.Multer.File, bucketName: string): Promise<any> {
+  async uploadFileImage(file: Express.Multer.File, bucketName: string): Promise<any> {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
-    bucketName = bucketName.replace("_", "-");
+    bucketName = bucketName.replace(/_/g, "-");
 
 
     const fileExtension = file.originalname.split('.').pop();
@@ -29,6 +29,34 @@ export class UploadService {
     return {
       image_custom: `/api/view-image?bucket=${bucketName}&file=${fileName}`,
       image_cloud: `/api/view-image?bucket=${bucketName}&file=${fileName}`,
+    };
+  }
+
+  async uploadFile(file: Express.Multer.File, bucketName: string): Promise<any> {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      throw new BadRequestException(`File size exceeds the limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+    }
+
+    bucketName = bucketName.replace(/_/g, "-");
+
+    const fileExtension = file.originalname.split('.').pop();
+    const fileName = `${Date.now()}-${uuidv4()}.${fileExtension}`;
+    const metaData = { 'Content-Type': file.mimetype };
+
+    const bucketExists = await this.minio.bucketExists(bucketName);
+    if (!bucketExists) {
+      await this.minio.makeBucket(bucketName, 'us-east-1');
+    }
+
+    await this.minio.putObject(bucketName, fileName, file.buffer, file.size, metaData);
+
+    return {
+      link: `/api/view-image?bucket=${bucketName}&file=${fileName}`,
     };
   }
 

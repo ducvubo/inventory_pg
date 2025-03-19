@@ -13,6 +13,10 @@ import { IRestaurantServiceGprcClient } from 'src/grpc/typescript/restaurant.cli
 import { IBackendGRPC } from 'src/grpc/typescript/api';
 import { firstValueFrom } from 'rxjs';
 import 'dotenv/config'
+import { sendMessageToKafka } from 'src/utils/kafka';
+import { IAccount } from 'src/guard/interface/account.interface';
+import { ResultPagination } from 'src/interface/resultPagination.interface';
+import { TicketGuestRestaurantEntity } from './entities/ticket-guest-restaurant.entity';
 
 @Injectable()
 export class TicketGuestRestaurantService {
@@ -104,7 +108,7 @@ export class TicketGuestRestaurantService {
         throw new BadRequestError("ID khách không được để trống")
       }
 
-      return await this.ticketGuestRestaurantRepo.createTicketGuestRestaurant({
+      const newTicket = await this.ticketGuestRestaurantRepo.createTicketGuestRestaurant({
         id_user_guest: id_user_guest,
         tkgr_res_id: createTicketGuestRestaurantDto.tkgr_res_id,
         tkgr_user_id: createTicketGuestRestaurantDto.tkgr_user_id,
@@ -114,7 +118,26 @@ export class TicketGuestRestaurantService {
         tkgr_priority: createTicketGuestRestaurantDto.tkgr_priority,
         tkgr_type: createTicketGuestRestaurantDto.tkgr_type,
         tkgr_attachment: createTicketGuestRestaurantDto.tkgr_attachment,
+        tkgr_user_email: createTicketGuestRestaurantDto.tkgr_user_email,
       })
+
+      sendMessageToKafka({
+        topic: 'GUEST_CREATE_TICKET',
+        message: JSON.stringify({
+          tkgr_user_email: createTicketGuestRestaurantDto.tkgr_user_email,
+          title: createTicketGuestRestaurantDto.tkgr_title,
+          description: createTicketGuestRestaurantDto.tkgr_description,
+          restaurant_name: JSON.parse(restaurantExist.data).restaurant_name,
+          restaurant_email: JSON.parse(restaurantExist.data).restaurant_email,
+          restaurant_phone: JSON.parse(restaurantExist.data).restaurant_phone,
+          restaurant_address: JSON.parse(restaurantExist.data).restaurant_address,
+          type: this.getTextType(createTicketGuestRestaurantDto.tkgr_type),
+          priority: this.getTextPriority(createTicketGuestRestaurantDto.tkgr_priority)
+        })
+      })
+
+
+      return newTicket
     } catch (error) {
       saveLogSystem({
         action: 'guestCreateTicket',
@@ -126,6 +149,114 @@ export class TicketGuestRestaurantService {
         type: 'error'
       })
       throw new ServerErrorDefault(error)
+    }
+  }
+
+  async getTicketRestaurant({
+    pageSize, pageIndex, q, tkgr_priority, tkgr_status, tkgr_type
+  }: {
+    pageSize: number,
+    pageIndex: number,
+    q: string,
+    tkgr_priority: string,
+    tkgr_status: string,
+    tkgr_type: string,
+  }, account: IAccount): Promise<ResultPagination<TicketGuestRestaurantEntity>> {
+    try {
+      return await this.ticketGuestRestaurantQuery.getTicketRestaurant({
+        pageSize,
+        pageIndex,
+        q,
+        tkgr_priority,
+        tkgr_status,
+        tkgr_type
+      }, account)
+    } catch (error) {
+      saveLogSystem({
+        action: 'get',
+        class: 'TicketGuestRestaurantQuery',
+        function: 'getTicketGuestRestaurantPagination',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+    }
+  }
+
+  async getTicketRestaurantById(tkgr_id: string) {
+    try {
+      return await this.ticketGuestRestaurantQuery.findTicketGuestRestaurantById(tkgr_id)
+    } catch (error) {
+      saveLogSystem({
+        action: 'get',
+        class: 'TicketGuestRestaurantQuery',
+        function: 'getTicketRestaurantById',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+    }
+  }
+
+  async resolvedTicketRestaurant(tkgr_id: string, account: IAccount) {
+    try {
+      const ticket = await this.ticketGuestRestaurantQuery.findTicketGuestRestaurantById(tkgr_id)
+      if (!ticket) {
+        throw new BadRequestError('Ticket không tồn tại')
+      }
+
+      if (ticket.tkgr_status === 'close' || ticket.tkgr_status === 'resolved') {
+        throw new BadRequestError('Ticket đã đóng hoặc đã giải quyết')
+      }
+
+      return await this.ticketGuestRestaurantRepo.resolvedTicketRestaurant(tkgr_id, account)
+
+    } catch (error) {
+      saveLogSystem({
+        action: 'resolved',
+        class: 'TicketGuestRestaurantQuery',
+        function: 'resolvedTicketRestaurant',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+    }
+  }
+
+
+
+  getTextType(type: string) {
+    switch (type) {
+      case 'book_table':
+        return 'Đặt bàn'
+      case 'order_dish':
+        return 'Đặt món'
+      case 'Q&A':
+        return 'Hỏi đáp'
+      case 'complain':
+        return 'Khiếu nại'
+      case 'other':
+        return 'Khác'
+      default:
+        return ''
+    }
+  }
+
+  getTextPriority(priority: string) {
+    switch (priority) {
+      case 'low':
+        return 'Thấp'
+      case 'medium':
+        return 'Trung bình'
+      case 'high':
+        return 'Cao'
+      case 'urgent':
+        return 'Khẩn cấp'
+      default:
+        return ''
     }
   }
 }

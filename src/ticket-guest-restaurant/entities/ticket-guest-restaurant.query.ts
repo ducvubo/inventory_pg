@@ -176,10 +176,10 @@ export class TicketGuestRestaurantQuery {
         meta: {
           current: pageIndex,
           pageSize,
-          totalPage: Math.ceil(result.body.hits.total.value / pageSize),
-          totalItem: result.body.hits.total.value
+          totalPage: Math.ceil(result.hits.total.value / pageSize),
+          totalItem: result.hits.total.value
         },
-        result: result.body.hits.hits.map((item: any) => item._source)
+        result: result.hits.hits.map((item: any) => item._source)
       }
     } catch (error) {
       saveLogSystem({
@@ -195,5 +195,43 @@ export class TicketGuestRestaurantQuery {
     }
   }
 
+  async findTicketGuestRestaurantById(tkgr_id: string): Promise<TicketGuestRestaurantEntity> {
+    try {
+      const indexExist = await indexElasticsearchExists(TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX)
 
+      if (!indexExist) {
+        return null
+      }
+
+      const result = await this.elasticSearch.search({
+        index: TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX,
+        body: {
+          from: 0,
+          size: 10000,
+          query: {
+            match: {
+              tkgr_id
+            }
+          }
+        }
+      }) as any
+
+      if (result.hits.total.value === 0) {
+        return null
+      }
+
+      return result.hits.hits[0]._source
+    } catch (error) {
+      saveLogSystem({
+        action: 'findTicketGuestRestaurantById',
+        class: 'TicketGuestRestaurantQuery',
+        function: 'findTicketGuestRestaurantById',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+      throw new ServerErrorDefault(error)
+    }
+  }
 }

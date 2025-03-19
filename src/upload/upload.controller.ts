@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Query, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './upload.service';
@@ -28,7 +28,39 @@ export class UploadController {
       throw new Error('No file provided');
     }
 
-    return await this.uploadService.uploadFile(file, req.headers.folder_type || 'default');
+    return await this.uploadService.uploadFileImage(file, req.headers.folder_type || 'default');
+  }
+
+  @Post('/file')
+  @ApiOperation({ summary: 'Upload any file to MinIO' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ResponseMessage('File uploaded successfully')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (req, file, cb) => {
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadAnyFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ): Promise<any> {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    const bucketName = req.headers.folder_type || 'default';
+    return await this.uploadService.uploadFile(file, bucketName);
   }
 
   @Get('get-image')
@@ -57,7 +89,8 @@ export class UploadController {
     const { stream, contentType } = await this.uploadService.getFileStream(bucketName, fileName);
     res.set({
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=86400', // Cache 1 ngày
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Cache-Control': 'public, max-age=86400',
     });
 
     stream.pipe(res);

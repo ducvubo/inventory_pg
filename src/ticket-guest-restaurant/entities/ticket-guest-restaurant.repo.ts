@@ -79,5 +79,62 @@ export class TicketGuestRestaurantRepo implements OnModuleInit {
     }
   }
 
+  async updateTicketRestaurantInProgess(tkgr_id: string, account: IAccount) {
+    try {
+      return await this.ticketGuestRestaurantRepo.createQueryBuilder()
+        .update(TicketGuestRestaurantEntity)
+        .set({
+          tkgr_status: 'in_progress',
+          tkgr_res_id: account.account_restaurant_id,
+          tkgr_id: tkgr_id,
+          updatedBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id
+        })
+        .where({
+          tkgr_id: tkgr_id,
+          tkgr_res_id: account.account_restaurant_id
+        })
+        .execute()
+    } catch (error) {
+      saveLogSystem({
+        action: 'update',
+        class: 'TicketGuestRestaurantRepo',
+        function: 'updateTicketRestaurantInProgess',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+    }
+  }
+
+  async resolvedTicketRestaurant(tkgr_id: string, account: IAccount) {
+    try {
+      return await this.ticketGuestRestaurantRepo.createQueryBuilder()
+        .update(TicketGuestRestaurantEntity)
+        .set({
+          tkgr_status: 'resolved',
+          tkgr_res_id: account.account_restaurant_id,
+          tkgr_id: tkgr_id,
+          updatedBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id
+        })
+        .where({
+          tkgr_id: tkgr_id,
+          tkgr_res_id: account.account_restaurant_id
+        })
+        .execute()
+    } catch (error) {
+      saveLogSystem({
+        action: 'update',
+        class: 'TicketGuestRestaurantRepo',
+        function: 'resolvedTicketRestaurant',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+      throw new ServerErrorDefault(error)
+    }
+  }
+
 
 }

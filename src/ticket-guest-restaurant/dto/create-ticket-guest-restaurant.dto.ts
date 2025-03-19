@@ -12,6 +12,11 @@ export class CreateTicketGuestRestaurantDto {
   @IsNumber({}, { message: 'User phải là số' })
   tkgr_user_id?: number;
 
+  @ApiProperty({ description: 'Email người dùng (nếu có)', example: '' })
+  @IsString({ message: 'Email phải là chuỗi' })
+  @IsNotEmpty({ message: 'Email không được để trống' })
+  tkgr_user_email: string;
+
   @ApiProperty({ description: 'Tiêu đề của ticket', example: 'Đặt bàn cho 5 người' })
   @IsNotEmpty({ message: 'Tiêu đề không được để trống' })
   @IsString({ message: 'Tiêu đề phải là chuỗi' })
@@ -21,15 +26,6 @@ export class CreateTicketGuestRestaurantDto {
   @IsNotEmpty({ message: 'Mô tả không được để trống' })
   @IsString({ message: 'Mô tả phải là chuỗi' })
   tkgr_description: string;
-
-  @ApiProperty({
-    description: 'Trạng thái ticket',
-    example: 'open',
-    enum: ['open', 'in_progress', 'close', 'resolved'],
-  })
-  @IsNotEmpty({ message: 'Trạng thái không được để trống' })
-  @IsIn(['open', 'in_progress', 'close', 'resolved'], { message: 'Trạng thái phải là "open", "in_progress", "close", "resolved"' })
-  tkgr_status: 'open' | 'in_progress' | 'close' | 'resolved';
 
   @ApiProperty({
     description: 'Mức độ ưu tiên',
@@ -43,11 +39,11 @@ export class CreateTicketGuestRestaurantDto {
   @ApiProperty({
     description: 'Loại ticket',
     example: 'book_table',
-    enum: ['book_table', 'order_dish', 'Q&A', 'complain', 'other', 'different'],
+    enum: ['book_table', 'order_dish', 'Q&A', 'complain', 'other'],
   })
   @IsNotEmpty({ message: 'Loại không được để trống' })
-  @IsIn(['book_table', 'order_dish', 'Q&A', 'complain', 'other', 'different'], { message: 'Loại phải là "book_table", "order_dish", "Q&A", "complain", "other", "different"' })
-  tkgr_type: 'book_table' | 'order_dish' | 'Q&A' | 'complain' | 'other' | 'different';
+  @IsIn(['book_table', 'order_dish', 'Q&A', 'complain', 'other'], { message: 'Loại phải là "book_table", "order_dish", "Q&A", "complain", "other"' })
+  tkgr_type: 'book_table' | 'order_dish' | 'Q&A' | 'complain' | 'other';
 
   @ApiProperty({ description: 'Tệp đính kèm (nếu có)', example: 'file.png', required: false })
   @IsOptional()

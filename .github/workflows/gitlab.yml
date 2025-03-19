@@ -1,31 +1,31 @@
-name: Push to GitLab
+# name: Push to GitLab
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-jobs:
-  push_to_gitlab:
-    runs-on: ubuntu-latest
+# jobs:
+#   push_to_gitlab:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
+#     steps:
+#       - name: Checkout the repository
+#         uses: actions/checkout@v2
 
-      - name: Fetch full history (unshallow)
-        run: git fetch --unshallow
+#       - name: Fetch full history (unshallow)
+#         run: git fetch --unshallow
 
-      - name: Set up Git
-        run: |
-          git config user.name "ducvubo"
-          git config user.email "vminhduc8@gmail.com"
+#       - name: Set up Git
+#         run: |
+#           git config user.name "ducvubo"
+#           git config user.email "vminhduc8@gmail.com"
 
-      - name: Update GitLab remote URL
-        run: |
-          git remote set-url origin https://gitlab.taphoaictu.id.vn/vuducbo/inventory_pg.git
-          git branch -M main
+#       - name: Update GitLab remote URL
+#         run: |
+#           git remote set-url origin https://gitlab.taphoaictu.id.vn/vuducbo/inventory_pg.git
+#           git branch -M main
 
-      - name: Push to GitLab
-        run: |
-          git push -uf https://oauth2:glpat-ZthLA4kebxD7g_5xtnTq@gitlab.taphoaictu.id.vn/vuducbo/inventory_pg.git main
+#       - name: Push to GitLab
+#         run: |
+#           git push -uf https://oauth2:glpat-ZthLA4kebxD7g_5xtnTq@gitlab.taphoaictu.id.vn/vuducbo/inventory_pg.git main

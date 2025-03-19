@@ -1,4 +1,5 @@
 import { TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX } from 'src/constants/index.elasticsearch'
+import { TicketGuestRestaurantReplicesEntity } from 'src/tick-guest-restaurant-replices/entities/tick-guest-restaurant-replices.entity'
 import { addDocToElasticsearch, updateDocByElasticsearch } from 'src/utils/elasticsearch'
 import { SampleEntity } from 'src/utils/sample.entity'
 import {
@@ -28,6 +29,9 @@ export class TicketGuestRestaurantEntity extends SampleEntity {
   tkgr_user_id?: number
 
   @Column('varchar', { length: 255 })
+  tkgr_user_email?: string
+
+  @Column('varchar', { length: 255 })
   tkgr_title?: string
 
   @Column('varchar', { length: 255 })
@@ -40,7 +44,7 @@ export class TicketGuestRestaurantEntity extends SampleEntity {
   tkgr_priority?: 'low' | 'medium' | 'high' | 'urgent'
 
   @Column('varchar', { length: 255 })
-  tkgr_type?: 'book_table' | 'order_dish' | 'Q&A' | 'complain' | 'other' | 'different'
+  tkgr_type?: 'book_table' | 'order_dish' | 'Q&A' | 'complain' | 'other'
 
   @Column('clob')
   tkgr_attachment?: string
@@ -48,8 +52,11 @@ export class TicketGuestRestaurantEntity extends SampleEntity {
   @Column('number', { default: 0 })
   tkgr_star?: number
 
-  @Column('varchar', { length: 255 })
+  @Column('varchar', { length: 255, nullable: true })
   tkgr_feedback?: string
+
+  @OneToMany(() => TicketGuestRestaurantReplicesEntity, (replice) => replice.ticketGuestRestaurant, { cascade: true })
+  replices?: TicketGuestRestaurantReplicesEntity[]
 }
 
 @EventSubscriber()

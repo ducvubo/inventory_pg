@@ -23,7 +23,7 @@ export class IdUserGuestInterceptor implements NestInterceptor {
     const userAgent = request.headers['user-agent']
     const clientIp = request.ip
     const path = request.path
-    const isImageApi = path.startsWith('/api/v1/upload/view-image');
+    const isImageApi = path.startsWith('/api/v1/upload/view-image') || path.startsWith('/api/v1/upload/file') || path.startsWith('/api/v1/upload');
     if (isImageApi) {
       return next.handle()
     }

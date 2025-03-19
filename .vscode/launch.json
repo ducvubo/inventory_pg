@@ -2,16 +2,18 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "node",
+   "type": "node",
       "request": "launch",
-      "name": "Debug Nest Framework",
+      "name": "Debug Inventory",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start:debug", "--", "--inspect-brk"],
+      // "runtimeArgs": ["run", "dev1"],
       "autoAttachChildProcesses": true,
       "restart": true,
       "sourceMaps": true,
       "stopOnEntry": false,
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
     }
   ]
 }
