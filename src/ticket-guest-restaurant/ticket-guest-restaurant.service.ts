@@ -226,6 +226,66 @@ export class TicketGuestRestaurantService {
     }
   }
 
+  async closeTicketRestaurant(tkgr_id: string) {
+    try {
+      const ticket = await this.ticketGuestRestaurantQuery.findTicketGuestRestaurantById(tkgr_id)
+      if (!ticket) {
+        throw new BadRequestError('Ticket không tồn tại')
+      }
+
+      if (ticket.tkgr_status === 'close' || ticket.tkgr_status === 'resolved') {
+        throw new BadRequestError('Ticket đã đóng hoặc đã giải quyết')
+      }
+
+      return await this.ticketGuestRestaurantRepo.closeTicketRestaurant(tkgr_id)
+
+    } catch (error) {
+      saveLogSystem({
+        action: 'close',
+        class: 'TicketGuestRestaurantQuery',
+        function: 'closeTicketRestaurant',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+    }
+  }
+
+  async getTicketGuestRestaurantPagination({
+    pageSize, pageIndex, q, tkgr_priority, tkgr_status, tkgr_type,
+    id_user_guest, tkgr_user_id }): Promise<{
+      meta: {
+        pageIndex: number,
+        pageSize: number,
+        totalPage: number,
+        totalItem: number
+      },
+      result: TicketGuestRestaurantEntity[]
+    }> {
+    try {
+      return await this.ticketGuestRestaurantQuery.getTicketGuestRestaurantPagination({
+        pageSize,
+        pageIndex,
+        q,
+        tkgr_priority,
+        tkgr_status,
+        tkgr_type,
+        id_user_guest,
+        tkgr_user_id: +tkgr_user_id
+      })
+    } catch (error) {
+      saveLogSystem({
+        action: 'get',
+        class: 'TicketGuestRestaurantQuery',
+        function: 'getTicketGuestRestaurantPagination',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+    }
+  }
 
 
   getTextType(type: string) {

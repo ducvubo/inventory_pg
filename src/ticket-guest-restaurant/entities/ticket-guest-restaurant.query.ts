@@ -53,17 +53,17 @@ export class TicketGuestRestaurantQuery {
         }
       }
 
-      //trường nào có thì mới cho vào tìm kiếm k thì loại bỏ vàtìm các bản ghi thỏa màn id_user_guest hoặc tkgr_user_id còn lại tất cả các điều kiện khác phải đúng theo yêu cầù
-      const must: any = [
-        {
-          bool: {
-            should: [
-              { match: { id_user_guest } },
-              { match: { tkgr_user_id } }
-            ]
-          }
-        }
-      ]
+      const must: any = [];
+
+
+      if (id_user_guest) {
+        must.push({ term: { "id_user_guest.keyword": id_user_guest } });
+      }
+
+      if (tkgr_user_id && tkgr_user_id !== 0) {
+        must.push({ term: { tkgr_user_id: +tkgr_user_id } });
+      }
+
       if (tkgr_priority) {
         must.push({ match: { tkgr_priority } })
       }
@@ -82,11 +82,17 @@ export class TicketGuestRestaurantQuery {
         body: {
           query: {
             bool: {
-              must
+              should: must,
+              minimum_should_match: 1
             }
           },
           from: (pageIndex - 1) * pageSize,
-          size: pageSize
+          size: pageSize,
+          sort: [
+            {
+              updatedAt: { order: 'desc' } // Sắp xếp giảm dần (mới nhất trước)
+            }
+          ],
         }
       }) as any
 
@@ -94,8 +100,8 @@ export class TicketGuestRestaurantQuery {
         meta: {
           pageIndex: pageIndex,
           pageSize,
-          totalPage: Math.ceil(result.hits?.hits.total.value / pageSize),
-          totalItem: result.hits?.hits.total.value
+          totalPage: Math.ceil(result.hits?.total.value / pageSize),
+          totalItem: result.hits?.total.value
         },
         result: result.hits?.hits.map((item: any) => item._source)
       }
@@ -168,7 +174,12 @@ export class TicketGuestRestaurantQuery {
             }
           },
           from: (pageIndex - 1) * pageSize,
-          size: pageSize
+          size: pageSize,
+          sort: [
+            {
+              updatedAt: { order: 'desc' }
+            }
+          ],
         }
       }) as any
 

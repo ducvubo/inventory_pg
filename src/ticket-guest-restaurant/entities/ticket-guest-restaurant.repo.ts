@@ -136,5 +136,31 @@ export class TicketGuestRestaurantRepo implements OnModuleInit {
     }
   }
 
+  async closeTicketRestaurant(tkgr_id: string) {
+    try {
+      return await this.ticketGuestRestaurantRepo.createQueryBuilder()
+        .update(TicketGuestRestaurantEntity)
+        .set({
+          tkgr_id: tkgr_id,
+          tkgr_status: 'close',
+        })
+        .where({
+          tkgr_id: tkgr_id
+        })
+        .execute()
+    } catch (error) {
+      saveLogSystem({
+        action: 'update',
+        class: 'TicketGuestRestaurantRepo',
+        function: 'closeTicketRestaurant',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+      throw new ServerErrorDefault(error)
+    }
+  }
+
 
 }

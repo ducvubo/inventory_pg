@@ -46,7 +46,7 @@ export class TicketGuestRestaurantController {
   }
 
   @Get('/get-ticket-restaurants/:id')
-  @UseGuards(AccountAuthGuard)
+  // @UseGuards(AccountAuthGuard)
   @ResponseMessage("Lấy thông tin ticket thành công")
   async getTicketGuestRestaurantById(
     @Param('id') id: string
@@ -62,5 +62,46 @@ export class TicketGuestRestaurantController {
     @Acccount() account: IAccount
   ) {
     return await this.ticketGuestRestaurantService.resolvedTicketRestaurant(id, account)
+  }
+
+  @Put('/close-ticket/:id')
+  @ResponseMessage("Đóng ticket thành công")
+  async closeTicket(
+    @Param('id') id: string
+  ) {
+    return await this.ticketGuestRestaurantService.closeTicketRestaurant(id)
+  }
+
+
+  @Get('/get-ticket-guest')
+  @ResponseMessage("Lấy danh sách ticket thành công")
+  async getTicketGuest(
+    @Query('pageIndex') pageIndex: string = '1',
+    @Query('pageSize') pageSize: string = '10',
+    @Query('q') q: string = '',
+    @Query('tkgr_priority') tkgr_priority: string = '',
+    @Query('tkgr_status') tkgr_status: string = '',
+    @Query('tkgr_type') tkgr_type: string = '',
+    @Query('tkgr_user_id') tkgr_user_id: number = 0,
+    @Request() req: RequestExpress
+  ): Promise<{
+    meta: {
+      pageIndex: number,
+      pageSize: number,
+      totalPage: number,
+      totalItem: number
+    },
+    result: TicketGuestRestaurantEntity[]
+  }> {
+    return await this.ticketGuestRestaurantService.getTicketGuestRestaurantPagination({
+      pageIndex: parseInt(pageIndex),
+      pageSize: parseInt(pageSize),
+      q,
+      tkgr_priority,
+      tkgr_status,
+      tkgr_type,
+      id_user_guest: req.headers['x-cl-id'] as string,
+      tkgr_user_id
+    })
   }
 }
