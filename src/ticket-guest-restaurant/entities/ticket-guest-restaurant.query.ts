@@ -26,7 +26,7 @@ export class TicketGuestRestaurantQuery {
       tkgr_priority: string,
       tkgr_type: string,
       id_user_guest: string
-      tkgr_user_id: number
+      tkgr_user_id: string
     }
   ):
     Promise<{
@@ -53,39 +53,46 @@ export class TicketGuestRestaurantQuery {
         }
       }
 
-      const must: any = [];
-
+      const must: any[] = [];
+      const should: any[] = [];
 
       if (id_user_guest) {
-        must.push({ term: { "id_user_guest.keyword": id_user_guest } });
+        should.push({ term: { "id_user_guest.keyword": id_user_guest } });
       }
 
-      if (tkgr_user_id && tkgr_user_id !== 0) {
-        must.push({ term: { tkgr_user_id: +tkgr_user_id } });
+      if (tkgr_user_id && tkgr_user_id !== "0") {
+        should.push({ term: { tkgr_user_id: tkgr_user_id } });
       }
 
       if (tkgr_priority) {
-        must.push({ match: { tkgr_priority } })
+        must.push({ match: { tkgr_priority } });
       }
       if (tkgr_status) {
-        must.push({ match: { tkgr_status } })
+        must.push({ match: { tkgr_status } });
       }
       if (tkgr_type) {
-        must.push({ match: { tkgr_type } })
+        must.push({ match: { tkgr_type } });
       }
       if (q) {
-        must.push({ match: { q } })
+        must.push({ match: { q } });
+      }
+
+      const query: any = {
+        bool: {
+          must, // Điều kiện AND
+        }
+      };
+
+      // Chỉ thêm `should` nếu có ít nhất một điều kiện OR
+      if (should.length > 0) {
+        query.bool.should = should;
+        query.bool.minimum_should_match = 1; // OR giữa các điều kiện này
       }
 
       const result = await this.elasticSearch.search({
         index: TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX,
         body: {
-          query: {
-            bool: {
-              should: must,
-              minimum_should_match: 1
-            }
-          },
+          query,
           from: (pageIndex - 1) * pageSize,
           size: pageSize,
           sort: [

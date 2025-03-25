@@ -272,7 +272,7 @@ export class TicketGuestRestaurantService {
         tkgr_status,
         tkgr_type,
         id_user_guest,
-        tkgr_user_id: +tkgr_user_id
+        tkgr_user_id: tkgr_user_id
       })
     } catch (error) {
       saveLogSystem({
