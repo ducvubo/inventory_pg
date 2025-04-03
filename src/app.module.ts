@@ -38,7 +38,7 @@ import { TicketGuestRestaurantReplicesEntity, TicketGuestRestaurantReplicesSubsc
     }),
     TypeOrmModule.forRoot({
       type: 'oracle',
-      host: '160.191.51.57',
+      host: '160.187.229.179',
       port: 1521,
       username: 'WareHousePG',
       password: 'Duc17052003*',
