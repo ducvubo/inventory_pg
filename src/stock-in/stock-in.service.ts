@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common'
+import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common'
 import { StockInRepo } from './entities/stock-in.repo'
 import { StockInQuery } from './entities/stock-in.query'
 import { IStockInService } from './stock-in.interface'
@@ -19,6 +19,8 @@ import { StockInItemEntity } from 'src/stock-in-item/entities/stock-in-item.enti
 import { UpdateStockInDto } from './dto/update-stock-in.dto'
 import { StockInItemQuery } from 'src/stock-in-item/entities/stock-in-item.query'
 import { ResultPagination } from 'src/interface/resultPagination.interface'
+import { callGeminiAPI } from 'src/utils/gemini.api'
+import * as pdfParse from 'pdf-parse';
 
 @Injectable()
 export class StockInService implements IStockInService, OnModuleInit {
@@ -29,7 +31,7 @@ export class StockInService implements IStockInService, OnModuleInit {
     private readonly ingredientQuey: IngredientQuey,
     private readonly stockInItemQuery: StockInItemQuery,
     private readonly dataSource: DataSource
-  ) {}
+  ) { }
 
   @Client({
     transport: Transport.GRPC,
@@ -509,6 +511,58 @@ export class StockInService implements IStockInService, OnModuleInit {
         type: 'error'
       })
       throw new ServerErrorDefault(error)
+    }
+  }
+
+
+  async importPdfFromBuffer(
+    buffer: Buffer,
+  ) {
+    const jsonData = await this.extractJsonFromPdfBuffer(buffer);
+
+    return jsonData;
+  }
+
+  async extractJsonFromPdfBuffer(buffer: Buffer): Promise<any> {
+    const data = await pdfParse(buffer);
+    const rawText = data.text;
+
+    const prompt = `
+Dựa vào nội dung sau, hãy trích xuất và trả về dữ liệu ở dạng JSON với các trường sau:
+- stki_code: Mã đơn hàng (tìm từ "Sồ chưng tủ gốc kèm theo" hoặc "Sồ")
+- spli_id: Tên nhà cung cấp (tìm từ "Tên nhà cung cấp")
+- stki_delivery_name: Họ tên người giao hàng (tìm từ "Họ tên nguơi giao hảng")
+- stki_delivery_phone: Số điện thoại người giao hàng (tìm từ "Sồ diện thọai nguơi giao hảng")
+- stki_receiver: Người nhận hàng (tìm từ "Ngừ̀ nhặn" hoặc "Ngươi nhạp hảng")
+- stki_date: Ngày nhập hàng (tìm từ "Ngày ... thảng ... năm ..." hoặc định dạng tương tự, chuyển thành định dạng ISO "YYYY-MM-DD")
+- stki_note: Ghi chú (tìm từ "Ghi chú")
+- stki_payment_method: Phương thức thanh toán (nếu không có, mặc định là "cash")
+- stock_in_items: Mảng sản phẩm từ bảng, ánh xạ chính xác theo thứ tự cột trong bảng:
+  - stki_item_name: Tên sản phẩm (từ cột "Tên, sản phắm, hảng hóa", chỉ lấy tên riêng, không bao gồm mã số)
+  - stki_item_code: Mã số (từ cột "Mã số", ví dụ: "Nuocmàn", "Botngot")
+  - stki_item_unit: Đơn vị tính (từ cột "Đơn yị tinh", ví dụ: "Chai", "Tûi")
+  - stki_item_quantity_real: Số lượng (từ cột "Số lưng", ví dụ: "10", "20")
+  - stki_item_price: Đơn giá (từ cột "Đơn giá", ví dụ: "10000")
+  - stki_item_total: Thành tiền (từ cột "Thảnh tiền", ví dụ: "100000", "200000")
+  - stki_item_note: Ghi chú (từ cột "Ghi chú")
+
+Lưu ý:
+- Đảm bảo không gộp mã số vào tên sản phẩm trong stki_item_name.
+- Nếu trường nào không có dữ liệu, để trống bằng chuỗi rỗng "" hoặc mảng rỗng [] cho stock_in_items. Chỉ trả về dữ liệu JSON thuần túy, không giải thích hay ký hiệu markdown.
+
+Nội dung:
+${rawText}
+  `.trim();
+
+    const result = await callGeminiAPI(prompt);
+    const clean = result.replace(/```json|```/g, '').trim();
+
+    try {
+      return JSON.parse(clean);
+    } catch (e) {
+      console.error('❌ Parse JSON thất bại:', e.message);
+      console.log('Raw Gemini result:', result);
+      return null;
     }
   }
 }

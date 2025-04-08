@@ -44,19 +44,19 @@ export class IdUserGuestInterceptor implements NestInterceptor {
         const duration = Date.now() - startTime
         const message = ` \n - path: ${request.path} \n - statusCode: ${codeHeader} \n - message: ${messageRes} \n - METHOD: ${request.method} \n - id_user_guest: ${id_user_guest ? id_user_guest : id_user_guest_new} \n - time: ${formatDate(new Date())} \n - duration: ${duration}ms`
 
-        loggerService.sendLog({
-          message: message,
-          params: request.query,
-          bodyRequest: request.body
-            ? JSON.stringify(request.body)?.length > 2000
-              ? 'Data too long'
-              : request.body
-            : 'No data',
-          headerResponse: {
-            id_user_guest: id_user_guest ? id_user_guest : id_user_guest_new
-          },
-          bodyResponse: JSON.stringify(data).length > 2000 ? 'Data too long' : data
-        })
+        // loggerService.sendLog({
+        //   message: message,
+        //   params: request.query,
+        //   bodyRequest: request.body
+        //     ? JSON.stringify(request.body)?.length > 2000
+        //       ? 'Data too long'
+        //       : request.body
+        //     : 'No data',
+        //   headerResponse: {
+        //     id_user_guest: id_user_guest ? id_user_guest : id_user_guest_new
+        //   },
+        //   bodyResponse: JSON.stringify(data).length > 2000 ? 'Data too long' : data
+        // })
         saveLogApiSuccess({
           id_user_guest: id_user_guest ? id_user_guest : id_user_guest_new,
           userAgent: userAgent,
@@ -76,18 +76,18 @@ export class IdUserGuestInterceptor implements NestInterceptor {
       catchError((error: any) => {
         const duration = Date.now() - startTime
         const message = ` \n - path: ${request.path} \n - statusCode: ${codeHeader} \n - METHOD: ${request.method} \n - id_user_guest: ${id_user_guest ? id_user_guest : id_user_guest_new} \n - time: ${formatDate(new Date())} \n - duration: ${duration}ms`
-        loggerService.sendLog({
-          message: message,
-          params: request.query,
-          bodyRequest: request.body
-            ? JSON.stringify(request.body)?.length > 2000
-              ? 'Data too long'
-              : request.body
-            : 'No data',
-          bodyResponse: {
-            message: error?.response?.message || error.message || 'Unknown error'
-          }
-        })
+        // loggerService.sendLog({
+        //   message: message,
+        //   params: request.query,
+        //   bodyRequest: request.body
+        //     ? JSON.stringify(request.body)?.length > 2000
+        //       ? 'Data too long'
+        //       : request.body
+        //     : 'No data',
+        //   bodyResponse: {
+        //     message: error?.response?.message || error.message || 'Unknown error'
+        //   }
+        // })
         saveLogApiError({
           id_user_guest: id_user_guest ? id_user_guest : id_user_guest_new,
           userAgent: userAgent,

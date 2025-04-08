@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
 import { StockInService } from './stock-in.service'
 import { Acccount, ResponseMessage } from 'src/decorator/customize'
 import { AccountAuthGuard } from 'src/guard/account.guard'
@@ -7,10 +7,13 @@ import { StockInEntity } from './entities/stock-in.entity'
 import { IAccount } from 'src/guard/interface/account.interface'
 import { UpdateStockInDto } from './dto/update-stock-in.dto'
 import { UpdateResult } from 'typeorm'
+import { FileInterceptor } from '@nestjs/platform-express'
+import * as multer from 'multer';
+import { ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger'
 
 @Controller('stock-in')
 export class StockInController {
-  constructor(private readonly stockInService: StockInService) {}
+  constructor(private readonly stockInService: StockInService) { }
 
   @Post()
   @ResponseMessage('Thêm phiếu nhập thành công')
@@ -43,6 +46,34 @@ export class StockInController {
   ): Promise<any> {
     return await this.stockInService.findAll({ pageIndex: +pageIndex, pageSize: +pageSize, stki_code }, account)
   }
+
+  @Post('import-pdf')
+  @ResponseMessage('Nhập phiếu nhập thành công')
+  @ApiOperation({ summary: 'Import phiếu nhập từ file PDF' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: multer.memoryStorage(), // lưu file vào bộ nhớ RAM
+      limits: { fileSize: 10 * 1024 * 1024 }, // giới hạn dung lượng 10MB (tuỳ chỉnh nếu cần)
+    }),
+  )
+  async importPdf(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<any> {
+    return await this.stockInService.importPdfFromBuffer(file.buffer);
+  }
+
 
   @Get('recycle')
   @UseGuards(AccountAuthGuard)
