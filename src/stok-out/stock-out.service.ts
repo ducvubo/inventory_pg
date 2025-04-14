@@ -529,6 +529,7 @@ Dựa vào nội dung sau, hãy trích xuất và trả về dữ liệu ở d�
 - stko_payment_method: Phương thức thanh toán (tìm từ "Phương thức thanh toán", nếu không có, mặc định là "cash")
 - stko_type: Loại xuất kho (tìm từ "Loại xuất kho", nếu có "nội bộ" thì ghi "internal", nếu có "bán lẻ" thì ghi "retail", mặc định "internal")
 - items: Mảng sản phẩm từ bảng, ánh xạ chính xác theo thứ tự cột trong bảng:
+  - stko_item_unit: Đơn vị tính (từ cột "Đơn yị tinh", ví dụ: "Chai", "Túi")
   - stko_item_quantity: Số lượng xuất (từ cột "Số lượng", ví dụ: "10", "20")
   - stko_item_price: Đơn giá (từ cột "Đơn giá", ví dụ: "10000")
   - igd_id: Mã nguyên liệu (từ cột "Mã nguyên liệu" hoặc "Mã sản phẩm", ví dụ: "Nuocmam", "Botngot")

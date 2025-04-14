@@ -540,11 +540,10 @@ Dựa vào nội dung sau, hãy trích xuất và trả về dữ liệu ở d�
 - stock_in_items: Mảng sản phẩm từ bảng, ánh xạ chính xác theo thứ tự cột trong bảng:
   - stki_item_name: Tên sản phẩm (từ cột "Tên, sản phắm, hảng hóa", chỉ lấy tên riêng, không bao gồm mã số)
   - stki_item_code: Mã số (từ cột "Mã số", ví dụ: "Nuocmàn", "Botngot")
-  - stki_item_unit: Đơn vị tính (từ cột "Đơn yị tinh", ví dụ: "Chai", "Tûi")
+  - stki_item_unit: Đơn vị tính (từ cột "Đơn yị tinh", ví dụ: "Chai", "Túi")
   - stki_item_quantity_real: Số lượng (từ cột "Số lưng", ví dụ: "10", "20")
   - stki_item_price: Đơn giá (từ cột "Đơn giá", ví dụ: "10000")
   - stki_item_total: Thành tiền (từ cột "Thảnh tiền", ví dụ: "100000", "200000")
-  - stki_item_note: Ghi chú (từ cột "Ghi chú")
 
 Lưu ý:
 - Đảm bảo không gộp mã số vào tên sản phẩm trong stki_item_name.
