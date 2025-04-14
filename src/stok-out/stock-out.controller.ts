@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
 import { StockOutService } from './stock-out.service'
 import { Acccount, ResponseMessage } from 'src/decorator/customize'
 import { CreateStockOutDto } from './dto/create-stock-out.dto'
@@ -7,10 +7,13 @@ import { StockOutEntity } from './entities/stock-out.entity'
 import { AccountAuthGuard } from 'src/guard/account.guard'
 import { UpdateStockOutDto } from './dto/update-stock-in.dto'
 import { UpdateResult } from 'typeorm'
+import { ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger'
+import { FileInterceptor } from '@nestjs/platform-express'
+import * as multer from 'multer';
 
 @Controller('stock-out')
 export class StockOutController {
-  constructor(private readonly stokOutService: StockOutService) {}
+  constructor(private readonly stokOutService: StockOutService) { }
 
   @Post()
   @ResponseMessage('Thêm phiếu xuất thành công')
@@ -42,6 +45,34 @@ export class StockOutController {
     @Query('stko_code') stko_code: string
   ): Promise<any> {
     return await this.stokOutService.findAll({ pageIndex: +pageIndex, pageSize: +pageSize, stko_code }, account)
+  }
+
+
+  @Post('import-pdf')
+  @ResponseMessage('Nhập phiếu nhập thành công')
+  @ApiOperation({ summary: 'Import phiếu nhập từ file PDF' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: multer.memoryStorage(), // lưu file vào bộ nhớ RAM
+      limits: { fileSize: 10 * 1024 * 1024 }, // giới hạn dung lượng 10MB (tuỳ chỉnh nếu cần)
+    }),
+  )
+  async importPdf(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<any> {
+    return await this.stokOutService.importPdfFromBuffer(file.buffer);
   }
 
   @Get('recycle')

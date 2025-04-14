@@ -1,5 +1,5 @@
 import { getElasticsearch } from 'src/config/elasticsearch.config'
-import { INGREDIENT_ELASTICSEARCH_INDEX } from 'src/constants/index.elasticsearch'
+import { INGREDIENT_ELASTICSEARCH_INDEX, STOCK_IN_ITEM_ELASTICSEARCH_INDEX, STOCK_OUT_ITEM_ELASTICSEARCH_INDEX } from 'src/constants/index.elasticsearch'
 import { saveLogSystem } from 'src/log/sendLog.els'
 import { indexElasticsearchExists } from 'src/utils/elasticsearch'
 import { ServerErrorDefault } from 'src/utils/errorResponse'
@@ -16,7 +16,7 @@ export class IngredientQuey {
   constructor(
     private readonly unitQuery: UnitQuery,
     private readonly catIngredientQuery: CatIngredientQuery
-  ) {}
+  ) { }
 
   async findOneById(igd_id: string, account: IAccount): Promise<IngredientEntity | null> {
     try {
@@ -154,10 +154,95 @@ export class IngredientQuey {
           const unt_id = await this.unitQuery.findOneById(result.unt_id, account)
           const cat_igd_id = await this.catIngredientQuery.findOneById(result.cat_igd_id, account)
 
+          let totalStockInQuantity = 0
+          let totalStockOutQuantity = 0
+
+          const indexStockInExist = await indexElasticsearchExists(STOCK_IN_ITEM_ELASTICSEARCH_INDEX)
+
+          if (indexStockInExist) {
+            const stockInQuery = {
+              bool: {
+                must: [
+                  {
+                    match: {
+                      igd_id: result.igd_id,
+                    },
+                  },
+                  {
+                    match: {
+                      stki_item_res_id: account.account_restaurant_id,
+                    },
+                  },
+                  {
+                    match: {
+                      isDeleted: 0,
+                    },
+                  },
+                ],
+              },
+            };
+
+            const stockInResult = await this.elasticSearch.search({
+              index: STOCK_IN_ITEM_ELASTICSEARCH_INDEX,
+              body: {
+                query: stockInQuery,
+                size: 1000,
+              },
+            }) as any;
+
+            totalStockInQuantity = stockInResult.hits.hits.reduce(
+              (sum, hit) => sum + hit._source.stki_item_quantity,
+              0
+            );
+          }
+
+
+          const indexStockOutExist = await indexElasticsearchExists(STOCK_OUT_ITEM_ELASTICSEARCH_INDEX)
+
+          if (indexStockOutExist) {
+            const stockOutQuery = {
+              bool: {
+                must: [
+                  {
+                    match: {
+                      igd_id: result.igd_id,
+                    },
+                  },
+                  {
+                    match: {
+                      stko_item_res_id: account.account_restaurant_id,
+                    },
+                  },
+                  {
+                    match: {
+                      isDeleted: 0,
+                    },
+                  },
+                ],
+              },
+            };
+
+            const stockOutResult = await this.elasticSearch.search({
+              index: STOCK_OUT_ITEM_ELASTICSEARCH_INDEX,
+              body: {
+                query: stockOutQuery,
+                size: 1000,
+              },
+            }) as any;
+
+            totalStockOutQuantity = stockOutResult.hits.hits.reduce(
+              (sum, hit) => sum + hit._source.stki_item_quantity,
+              0
+            );
+          }
+
+
           return {
             ...result,
             unt_id,
-            cat_igd_id
+            cat_igd_id,
+            totalStockInQuantity,
+            totalStockOutQuantity
           }
         })
       )
@@ -226,7 +311,9 @@ export class IngredientQuey {
                 }
               ]
             }
-          }
+          },
+          from: 0,
+          size: 10000,
         }
       })
 

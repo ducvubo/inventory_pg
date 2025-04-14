@@ -19,7 +19,8 @@ import { UpdateStockOutDto } from './dto/update-stock-in.dto'
 import { IAccount } from 'src/guard/interface/account.interface'
 import { ResultPagination } from 'src/interface/resultPagination.interface'
 import { IStockOutService } from './stock-out.interface'
-
+import { callGeminiAPI } from 'src/utils/gemini.api'
+import * as pdfParse from 'pdf-parse';
 @Injectable()
 export class StockOutService implements IStockOutService {
   constructor(
@@ -29,7 +30,7 @@ export class StockOutService implements IStockOutService {
     private readonly ingredientQuey: IngredientQuey,
     private readonly stockOutItemQuery: StockOutItemQuery,
     private readonly dataSource: DataSource
-  ) {}
+  ) { }
 
   @Client({
     transport: Transport.GRPC,
@@ -505,4 +506,53 @@ export class StockOutService implements IStockOutService {
       throw new ServerErrorDefault(error)
     }
   }
+
+  async importPdfFromBuffer(
+    buffer: Buffer,
+  ): Promise<any> {
+    const jsonData = await this.extractJsonFromPdfBuffer(buffer);
+    return jsonData;
+  }
+
+  async extractJsonFromPdfBuffer(buffer: Buffer): Promise<any> {
+    const data = await pdfParse(buffer);
+    const rawText = data.text;
+
+    const prompt = `
+Dựa vào nội dung sau, hãy trích xuất và trả về dữ liệu ở dạng JSON với các trường sau:
+- stko_code: Mã phiếu xuất (tìm từ "Số chứng từ" hoặc "Mã phiếu xuất")
+- spli_id: Mã nhà cung cấp (tìm từ "Mã nhà cung cấp" hoặc "Nhà cung cấp", nếu có)
+- stko_seller: Người bán/người xuất hàng (tìm từ "Người xuất hàng" hoặc "Họ tên người bán")
+- stko_seller_type: Loại người bán (mặc định "employee" nếu không có, nếu có "chủ nhà hàng" thì ghi "restaurant")
+- stko_date: Ngày xuất hàng (tìm từ "Ngày ... tháng ... năm ..." hoặc định dạng tương tự, chuyển thành định dạng ISO "YYYY-MM-DD")
+- stko_note: Ghi chú (tìm từ "Ghi chú")
+- stko_payment_method: Phương thức thanh toán (tìm từ "Phương thức thanh toán", nếu không có, mặc định là "cash")
+- stko_type: Loại xuất kho (tìm từ "Loại xuất kho", nếu có "nội bộ" thì ghi "internal", nếu có "bán lẻ" thì ghi "retail", mặc định "internal")
+- items: Mảng sản phẩm từ bảng, ánh xạ chính xác theo thứ tự cột trong bảng:
+  - stko_item_quantity: Số lượng xuất (từ cột "Số lượng", ví dụ: "10", "20")
+  - stko_item_price: Đơn giá (từ cột "Đơn giá", ví dụ: "10000")
+  - igd_id: Mã nguyên liệu (từ cột "Mã nguyên liệu" hoặc "Mã sản phẩm", ví dụ: "Nuocmam", "Botngot")
+
+Lưu ý:
+- Nếu trường nào không có dữ liệu, để trống bằng chuỗi rỗng "" hoặc mảng rỗng [] cho items.
+- Đảm bảo dữ liệu khớp với cấu trúc của StockOutEntity và StockOutItemEntity.
+- Chỉ trả về dữ liệu JSON thuần túy, không giải thích hay ký hiệu markdown.
+
+Nội dung:
+${rawText}
+  `.trim();
+
+    const result = await callGeminiAPI(prompt);
+    const clean = result.replace(/```json|```/g, '').trim();
+
+    try {
+      return JSON.parse(clean);
+    } catch (e) {
+      console.error('❌ Parse JSON thất bại:', e.message);
+      console.log('Raw Gemini result:', result);
+      return null;
+    }
+  }
+
+
 }

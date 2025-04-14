@@ -207,7 +207,9 @@ export class CatIngredientQuery {
                 }
               ]
             }
-          }
+          },
+          from: 0,
+          size: 10000,
         }
       })
 

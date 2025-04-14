@@ -41,8 +41,10 @@ export class StockOutItemQuery {
                   }
                 }
               ]
-            }
-          }
+            },
+          },
+          from: 0,
+          size: 10000,
         }
       })
 

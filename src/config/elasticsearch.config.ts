@@ -20,6 +20,7 @@ const handleEventConnection = async ({ connectionElasticsearch }: { connectionEl
   }
 }
 export const initElasticsearch = () => {
+  console.log('process.env.ELASTICSEARCH_NODE', process.env.ELASTICSEARCH_NODE);
   const instanceElasticsearch = new Client({
     node: process.env.ELASTICSEARCH_NODE,
     auth: {

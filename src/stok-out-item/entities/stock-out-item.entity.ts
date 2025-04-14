@@ -52,11 +52,11 @@ export class StockOutItemSubscriber implements EntitySubscriberInterface<StockOu
   }
 
   async afterInsert(event: InsertEvent<StockOutItemEntity>): Promise<void> {
-    await addDocToElasticsearch(STOCK_OUT_ITEM_ELASTICSEARCH_INDEX, event.entity.stko_id, event.entity)
+    await addDocToElasticsearch(STOCK_OUT_ITEM_ELASTICSEARCH_INDEX, event.entity.stko_item_id, event.entity)
   }
 
   async afterUpdate(event: UpdateEvent<StockOutItemEntity>): Promise<void> {
-    await updateDocByElasticsearch(STOCK_OUT_ITEM_ELASTICSEARCH_INDEX, event.entity.stko_id, event.entity)
+    await updateDocByElasticsearch(STOCK_OUT_ITEM_ELASTICSEARCH_INDEX, event.entity.stko_item_id, event.entity)
   }
 
   async afterRemove(event: RemoveEvent<StockOutItemEntity>): Promise<void> {

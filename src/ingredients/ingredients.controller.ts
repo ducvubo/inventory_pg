@@ -9,10 +9,11 @@ import { UpdateIngredientDto } from './dto/update-ingredient.dto'
 import { UpdateResult } from 'typeorm'
 import { ResultPagination } from 'src/interface/resultPagination.interface'
 import { UpdateStatusIngredientDto } from './dto/update-status-ingredient.dto'
+import { GetLowStockDto, GetStatsDto } from './dto/get-stats.dto'
 
 @Controller('ingredients')
 export class IngredientsController {
-  constructor(private readonly ingredientsService: IngredientsService) {}
+  constructor(private readonly ingredientsService: IngredientsService) { }
 
   @Post()
   @ResponseMessage('Thêm nguyên liệu thành công')
@@ -89,6 +90,64 @@ export class IngredientsController {
     return this.ingredientsService.updateStatusIngredient(updateStatusIngredientDto, account)
   }
 
+
+
+
+
+  @Get('total-stock-value')
+  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getTotalStockValue(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getTotalStockValue(query, account);
+  }
+
+  @Get('stock-in-trends')
+  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getStockInTrends(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getStockInTrends(query, account);
+  }
+
+  @Get('stock-out-trends')
+  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getStockOutTrends(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getStockOutTrends(query, account);
+  }
+
+  @Get('low-stock')
+  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getLowStockIngredients(@Query() query: GetLowStockDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getLowStockIngredients(query, account);
+  }
+
+  @Get('top-ingredients')
+  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getTopIngredients(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getTopIngredients(query, account);
+  }
+
+  @Get('recent-transactions')
+  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getRecentStockTransactions(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getRecentStockTransactions(query, account);
+  }
+
+  @Get('stock-by-category')
+  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getStockByCategory(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getStockByCategory(query, account);
+  }
+
+
+
+
+
+
   @Patch('restore/:igd_id')
   @ResponseMessage('Khôi phục nguyên liệu thành công')
   @UseGuards(AccountAuthGuard)
@@ -109,4 +168,6 @@ export class IngredientsController {
   async findOneById(@Param('igd_id') igd_id: string, @Acccount() account: IAccount): Promise<IngredientEntity> {
     return this.ingredientsService.findOneById(igd_id, account)
   }
+
+
 }

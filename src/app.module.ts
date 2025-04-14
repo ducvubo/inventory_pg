@@ -43,6 +43,7 @@ import { TicketGuestRestaurantReplicesEntity, TicketGuestRestaurantReplicesSubsc
       username: 'WareHousePG',
       password: 'Duc17052003*',
       serviceName: 'ORCLPDB1',
+      // logging: true,
       entities: [
         SupplierEntity,
         CatIngredientEntity,
