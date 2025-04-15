@@ -42,7 +42,9 @@ export class StockInItemQuery {
                 }
               ]
             }
-          }
+          },
+          from: 0,
+          size: 10000
         }
       })
 

@@ -231,7 +231,7 @@ export class IngredientQuey {
             }) as any;
 
             totalStockOutQuantity = stockOutResult.hits.hits.reduce(
-              (sum, hit) => sum + hit._source.stki_item_quantity,
+              (sum, hit) => sum + hit._source.stko_item_quantity,
               0
             );
           }

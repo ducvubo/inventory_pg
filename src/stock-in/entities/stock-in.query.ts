@@ -13,7 +13,7 @@ import { StockInItemQuery } from 'src/stock-in-item/entities/stock-in-item.query
 export class StockInQuery {
   private readonly elasticSearch = getElasticsearch().instanceConnect
 
-  constructor(private readonly stockInInItemQuery: StockInItemQuery) {}
+  constructor(private readonly stockInInItemQuery: StockInItemQuery) { }
 
   async findOneByCode(stki_code: string, account: IAccount): Promise<StockInEntity> {
     try {

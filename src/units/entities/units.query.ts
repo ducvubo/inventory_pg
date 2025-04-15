@@ -44,7 +44,9 @@ export class UnitQuery {
                 }
               ]
             }
-          }
+          },
+          from: 0,
+          size: 10000
         }
       })
 
