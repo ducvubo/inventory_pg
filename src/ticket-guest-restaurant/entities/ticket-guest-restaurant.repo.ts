@@ -2,7 +2,10 @@ import { Repository, UpdateResult } from 'typeorm'
 import { InjectRepository } from '@nestjs/typeorm'
 import { ServerErrorDefault } from 'src/utils/errorResponse'
 import { addDocToElasticsearch, deleteAllDocByElasticsearch, indexElasticsearchExists } from 'src/utils/elasticsearch'
-import { FOOD_RESTAURANT_ELASTICSEARCH_INDEX, TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX } from 'src/constants/index.elasticsearch'
+import {
+  FOOD_RESTAURANT_ELASTICSEARCH_INDEX,
+  TICKET_GUEST_RESTAURANT_ELASTICSEARCH_INDEX
+} from 'src/constants/index.elasticsearch'
 import { ConfigService } from '@nestjs/config'
 import { Injectable, OnModuleInit } from '@nestjs/common'
 import { saveLogSystem } from 'src/log/sendLog.els'
@@ -15,7 +18,7 @@ export class TicketGuestRestaurantRepo implements OnModuleInit {
     @InjectRepository(TicketGuestRestaurantEntity)
     private readonly ticketGuestRestaurantRepo: Repository<TicketGuestRestaurantEntity>,
     private readonly configService: ConfigService
-  ) { }
+  ) {}
 
   async onModuleInit() {
     const isSync = this.configService.get('SYNC_MONGODB_TO_ELASTICSEARCH')
@@ -49,7 +52,11 @@ export class TicketGuestRestaurantRepo implements OnModuleInit {
     }
   }
 
-  updateStatusTicketGuestRestaurant(tkgr_status: 'open' | 'in_progress' | 'close' | 'resolved', tkgr_id: string, account: IAccount): Promise<UpdateResult> {
+  updateStatusTicketGuestRestaurant(
+    tkgr_status: 'open' | 'in_progress' | 'close' | 'resolved',
+    tkgr_id: string,
+    account: IAccount
+  ): Promise<UpdateResult> {
     try {
       return this.ticketGuestRestaurantRepo
         .createQueryBuilder()
@@ -81,7 +88,8 @@ export class TicketGuestRestaurantRepo implements OnModuleInit {
 
   async updateTicketRestaurantInProgess(tkgr_id: string, account: IAccount) {
     try {
-      return await this.ticketGuestRestaurantRepo.createQueryBuilder()
+      return await this.ticketGuestRestaurantRepo
+        .createQueryBuilder()
         .update(TicketGuestRestaurantEntity)
         .set({
           tkgr_status: 'in_progress',
@@ -109,7 +117,8 @@ export class TicketGuestRestaurantRepo implements OnModuleInit {
 
   async resolvedTicketRestaurant(tkgr_id: string, account: IAccount) {
     try {
-      return await this.ticketGuestRestaurantRepo.createQueryBuilder()
+      return await this.ticketGuestRestaurantRepo
+        .createQueryBuilder()
         .update(TicketGuestRestaurantEntity)
         .set({
           tkgr_status: 'resolved',
@@ -138,11 +147,12 @@ export class TicketGuestRestaurantRepo implements OnModuleInit {
 
   async closeTicketRestaurant(tkgr_id: string) {
     try {
-      return await this.ticketGuestRestaurantRepo.createQueryBuilder()
+      return await this.ticketGuestRestaurantRepo
+        .createQueryBuilder()
         .update(TicketGuestRestaurantEntity)
         .set({
           tkgr_id: tkgr_id,
-          tkgr_status: 'close',
+          tkgr_status: 'close'
         })
         .where({
           tkgr_id: tkgr_id
@@ -162,5 +172,39 @@ export class TicketGuestRestaurantRepo implements OnModuleInit {
     }
   }
 
-
+  async syncTicketClientIdOldToClientIdNewById({
+    clientIdNew,
+    clientIdOld,
+    tkgr_id
+  }: {
+    clientIdOld: string
+    clientIdNew: string
+    tkgr_id: string
+  }) {
+    try {
+      return await this.ticketGuestRestaurantRepo
+        .createQueryBuilder()
+        .update(TicketGuestRestaurantEntity)
+        .set({
+          tkgr_id: tkgr_id,
+          id_user_guest: clientIdNew
+        })
+        .where({
+          tkgr_id: tkgr_id,
+          id_user_guest: clientIdOld
+        })
+        .execute()
+    } catch (error) {
+      saveLogSystem({
+        action: 'update',
+        class: 'TicketGuestRestaurantRepo',
+        function: 'syncTicketClientIdOldToClientIdNewById',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+      throw new ServerErrorDefault(error)
+    }
+  }
 }
