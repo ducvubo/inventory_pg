@@ -18,6 +18,7 @@ import { StockInEntity } from 'src/stock-in/entities/stock-in.entity'
 import { StockOutEntity } from 'src/stok-out/entities/stock-out.entity'
 import { CatIngredientEntity } from 'src/cat-ingredient/entities/cat-ingredient.entity'
 import { GetLowStockDto, GetStatsDto } from './dto/get-stats.dto'
+import { sendMessageToKafka } from 'src/utils/kafka'
 
 @Injectable()
 export class IngredientsService implements IIngredientsService {
@@ -40,7 +41,7 @@ export class IngredientsService implements IIngredientsService {
 
   async createIngredient(createIngredientDto: CreateIngredientDto, account: IAccount): Promise<IngredientEntity> {
     try {
-      return this.ingredientRepo.createIngredient({
+      const ingredient = await this.ingredientRepo.createIngredient({
         igd_name: createIngredientDto.igd_name,
         igd_description: createIngredientDto.igd_description,
         cat_igd_id: createIngredientDto.cat_igd_id,
@@ -49,6 +50,20 @@ export class IngredientsService implements IIngredientsService {
         createdBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id,
         unt_id: createIngredientDto.unt_id
       })
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nguyên liệu ${createIngredientDto.igd_name} vừa được tạo mới`,
+          noti_title: `Nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return ingredient
     } catch (error) {
       saveLogSystem({
         action: 'createIngredient',
@@ -86,7 +101,7 @@ export class IngredientsService implements IIngredientsService {
       if (!catIngredientExist) {
         throw new BadRequestError('Nguyên liệu không tồn tại')
       }
-      return this.ingredientRepo.updateIngredient({
+      const update = await this.ingredientRepo.updateIngredient({
         igd_name: updateIngredientDto.igd_name,
         igd_description: updateIngredientDto.igd_description,
         igd_image: updateIngredientDto.igd_image,
@@ -96,6 +111,20 @@ export class IngredientsService implements IIngredientsService {
         igd_id: updateIngredientDto.igd_id,
         unt_id: updateIngredientDto.unt_id
       })
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nguyên liệu ${updateIngredientDto.igd_name} vừa được cập nhật`,
+          noti_title: `Nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return update
     } catch (error) {
       saveLogSystem({
         action: 'updateIngredient',
@@ -116,7 +145,20 @@ export class IngredientsService implements IIngredientsService {
       if (!catIngredientExist) {
         throw new BadRequestError('Nguyên liệu không tồn tại')
       }
-      return this.ingredientRepo.deleteIngredient(igd_id, account)
+      const deleted = await this.ingredientRepo.deleteIngredient(igd_id, account)
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nguyên liệu ${catIngredientExist.igd_name} vừa được chuyển vào thùng rác`,
+          noti_title: `Nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return deleted
     } catch (error) {
       saveLogSystem({
         action: 'deleteIngredient',
@@ -137,7 +179,22 @@ export class IngredientsService implements IIngredientsService {
       if (!catIngredientExist) {
         throw new BadRequestError('Nguyên liệu không tồn tại')
       }
-      return this.ingredientRepo.restoreIngredient(igd_id, account)
+      const update = await this.ingredientRepo.restoreIngredient(igd_id, account)
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nguyên liệu ${catIngredientExist.igd_name} vừa được khôi phục`,
+          noti_title: `Nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return update
+
     } catch (error) {
       saveLogSystem({
         action: 'restoreIngredient',
@@ -161,7 +218,20 @@ export class IngredientsService implements IIngredientsService {
       if (!catIngredientExist) {
         throw new BadRequestError('Nguyên liệu không tồn tại')
       }
-      return this.ingredientRepo.updateStatusIngredient(updateStatusIngredientDto, account)
+      const update = await this.ingredientRepo.updateStatusIngredient(updateStatusIngredientDto, account)
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nguyên liệu ${catIngredientExist.igd_name} vừa được cập nhật trạng thái`,
+          noti_title: `Nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return update
     } catch (error) {
       saveLogSystem({
         action: 'updateStatusIngredient',

@@ -11,17 +11,18 @@ import { SupplierEntity } from './entities/suppliers.entity'
 import { ResultPagination } from 'src/interface/resultPagination.interface'
 import { UpdateResult } from 'typeorm'
 import { ISuppliersService } from './suppliers.interface'
+import { sendMessageToKafka } from 'src/utils/kafka'
 
 @Injectable()
 export class SuppliersService implements ISuppliersService {
   constructor(
     private readonly supplierQuery: SupplierQuery,
     private readonly supplierRepo: SupplierRepo
-  ) {}
+  ) { }
 
   async createSupplier(createSupplierDto: CreateSupplierDto, account: IAccount): Promise<SupplierEntity> {
     try {
-      return await this.supplierRepo.createSupplier({
+      const supplier = await this.supplierRepo.createSupplier({
         spli_name: createSupplierDto.spli_name,
         spli_phone: createSupplierDto.spli_phone,
         spli_email: createSupplierDto.spli_email,
@@ -31,6 +32,20 @@ export class SuppliersService implements ISuppliersService {
         spli_res_id: account.account_restaurant_id,
         createdBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id
       })
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nhà cung cấp ${createSupplierDto.spli_name} vừa được thêm mới`,
+          noti_title: `Nhà cung cấp`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return supplier
     } catch (error) {
       saveLogSystem({
         action: 'createSupplier',
@@ -68,7 +83,7 @@ export class SuppliersService implements ISuppliersService {
       if (!supplierExist) {
         throw new BadRequestError('Nhà cung cấp không tồn tại')
       }
-      return await this.supplierRepo.updateSupplier({
+      const update = await this.supplierRepo.updateSupplier({
         spli_id: updateSupplierDto.spli_id,
         spli_name: updateSupplierDto.spli_name,
         spli_phone: updateSupplierDto.spli_phone,
@@ -79,6 +94,19 @@ export class SuppliersService implements ISuppliersService {
         spli_res_id: account.account_restaurant_id,
         updatedBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id
       })
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nhà cung cấp ${updateSupplierDto.spli_name} vừa được cập nhật`,
+          noti_title: `Nhà cung cấp`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return update
     } catch (error) {
       saveLogSystem({
         action: 'updateSupplier',
@@ -99,7 +127,20 @@ export class SuppliersService implements ISuppliersService {
       if (!supplierExist) {
         throw new BadRequestError('Nhà cung cấp không tồn tại')
       }
-      return await this.supplierRepo.deleteSupplier(spli_id, account)
+      const deleted = await this.supplierRepo.deleteSupplier(spli_id, account)
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nhà cung cấp ${supplierExist.spli_name} vừa chuyển vào thùng rác`,
+          noti_title: `Nhà cung cấp`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return deleted
     } catch (error) {
       saveLogSystem({
         action: 'deleteSupplier',
@@ -120,7 +161,19 @@ export class SuppliersService implements ISuppliersService {
       if (!supplierExist) {
         throw new BadRequestError('Nhà cung cấp không tồn tại')
       }
-      return await this.supplierRepo.restoreSupplier(spli_id, account)
+      const restore = await this.supplierRepo.restoreSupplier(spli_id, account)
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nhà cung cấp ${supplierExist.spli_name} vừa được khôi phục`,
+          noti_title: `Nhà cung cấp`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return restore
     } catch (error) {
       saveLogSystem({
         action: 'restoreSupplier',
@@ -144,7 +197,19 @@ export class SuppliersService implements ISuppliersService {
       if (!supplierExist) {
         throw new BadRequestError('Nhà cung cấp không tồn tại')
       }
-      return await this.supplierRepo.updateStatusSupplier(updateStatusSupplierDto, account)
+      const updated = await this.supplierRepo.updateStatusSupplier(updateStatusSupplierDto, account)
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Nhà cung cấp ${supplierExist.spli_name} vừa được cập nhật trạng thái`,
+          noti_title: `Nhà cung cấp`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return updated
     } catch (error) {
       saveLogSystem({
         action: 'updateStatusSupplier',

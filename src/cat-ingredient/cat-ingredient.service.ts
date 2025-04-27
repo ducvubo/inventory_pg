@@ -11,25 +11,40 @@ import { UpdateResult } from 'typeorm'
 import { UpdateStatusCatIngredientDto } from './dto/update-status-cat-ingredient.dto'
 import { ResultPagination } from 'src/interface/resultPagination.interface'
 import { ICatIngredientService } from './cat-ingredient.interface'
+import { sendMessageToKafka } from 'src/utils/kafka'
 
 @Injectable()
 export class CatIngredientService implements ICatIngredientService {
   constructor(
     private readonly catIngredientRepo: CatIngredientRepo,
     private readonly catIngredientQuery: CatIngredientQuery
-  ) {}
+  ) { }
 
   async createCatIngredient(
     createCatIngredientDto: CreateCatIngredientDto,
     account: IAccount
   ): Promise<CatIngredientEntity> {
     try {
-      return this.catIngredientRepo.createCatIngredient({
+      const cat = await this.catIngredientRepo.createCatIngredient({
         cat_igd_name: createCatIngredientDto.cat_igd_name,
         cat_igd_description: createCatIngredientDto.cat_igd_description,
         cat_igd_res_id: account.account_restaurant_id,
         createdBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id
       })
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Danh mục nguyên liệu ${createCatIngredientDto.cat_igd_name} vừa được tạo mới`,
+          noti_title: `Danh mục nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return cat
     } catch (error) {
       saveLogSystem({
         action: 'createCatIngredient',
@@ -67,13 +82,25 @@ export class CatIngredientService implements ICatIngredientService {
       if (!catIngredientExist) {
         throw new BadRequestError('Danh mục nguyên liệu không tồn tại')
       }
-      return this.catIngredientRepo.updateCatIngredient({
+      const update = await this.catIngredientRepo.updateCatIngredient({
         cat_igd_name: updateCatIngredientDto.cat_igd_name,
         cat_igd_description: updateCatIngredientDto.cat_igd_description,
         updatedBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id,
         cat_igd_res_id: account.account_restaurant_id,
         cat_igd_id: updateCatIngredientDto.cat_igd_id
       })
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Danh mục nguyên liệu ${updateCatIngredientDto.cat_igd_name} vừa được cập nhật`,
+          noti_title: `Danh mục nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return update
     } catch (error) {
       saveLogSystem({
         action: 'updateCatIngredient',
@@ -94,7 +121,20 @@ export class CatIngredientService implements ICatIngredientService {
       if (!catIngredientExist) {
         throw new BadRequestError('Danh mục nguyên liệu không tồn tại')
       }
-      return this.catIngredientRepo.deleteCatIngredient(cat_igd_id, account)
+      const deleted = await this.catIngredientRepo.deleteCatIngredient(cat_igd_id, account)
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Danh mục nguyên liệu ${catIngredientExist.cat_igd_name} vừa được chuyển vào thúng rác`,
+          noti_title: `Danh mục nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return deleted
     } catch (error) {
       saveLogSystem({
         action: 'deleteCatIngredient',
@@ -115,7 +155,19 @@ export class CatIngredientService implements ICatIngredientService {
       if (!catIngredientExist) {
         throw new BadRequestError('Danh mục nguyên liệu không tồn tại')
       }
-      return this.catIngredientRepo.restoreCatIngredient(cat_igd_id, account)
+      const restore = await this.catIngredientRepo.restoreCatIngredient(cat_igd_id, account)
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Danh mục nguyên liệu ${catIngredientExist.cat_igd_name} vừa được phục hồi`,
+          noti_title: `Danh mục nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return restore
     } catch (error) {
       saveLogSystem({
         action: 'restoreCatIngredient',
@@ -142,7 +194,20 @@ export class CatIngredientService implements ICatIngredientService {
       if (!catIngredientExist) {
         throw new BadRequestError('Danh mục nguyên liệu không tồn tại')
       }
-      return this.catIngredientRepo.updateStatusCatIngredient(updateStatusCatIngredientDto, account)
+      const update = await this.catIngredientRepo.updateStatusCatIngredient(updateStatusCatIngredientDto, account)
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Danh mục nguyên liệu ${catIngredientExist.cat_igd_name} vừa được cập nhật trạng thái`,
+          noti_title: `Danh mục nguyên liệu`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return update
     } catch (error) {
       saveLogSystem({
         action: 'updateStatusCatIngredient',

@@ -21,6 +21,7 @@ import { StockInItemQuery } from 'src/stock-in-item/entities/stock-in-item.query
 import { ResultPagination } from 'src/interface/resultPagination.interface'
 import { callGeminiAPI } from 'src/utils/gemini.api'
 import * as pdfParse from 'pdf-parse';
+import { sendMessageToKafka } from 'src/utils/kafka'
 
 @Injectable()
 export class StockInService implements IStockInService, OnModuleInit {
@@ -132,6 +133,18 @@ export class StockInService implements IStockInService, OnModuleInit {
       )
 
       await queryRunner.commitTransaction()
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Phiếu nhập kho ${createStockInDto.stki_code} vừa được tạo mới`,
+          noti_title: `Nhập kho`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
 
       return stockIn
     } catch (error) {
@@ -266,6 +279,18 @@ export class StockInService implements IStockInService, OnModuleInit {
         .execute()
 
       await queryRunner.commitTransaction()
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Phiếu nhập kho ${updateStockInDto.stki_code} vừa được cập nhật`,
+          noti_title: `Nhập kho`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
 
       return stockIn
     } catch (error) {
@@ -410,6 +435,18 @@ export class StockInService implements IStockInService, OnModuleInit {
 
       await queryRunner.commitTransaction()
 
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Phiếu nhập kho ${stockInExists.stki_code} vừa được chuyển vào thùng rác`,
+          noti_title: `Nhập kho`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
       return deleted
     } catch (error) {
       await queryRunner.rollbackTransaction()
@@ -471,6 +508,18 @@ export class StockInService implements IStockInService, OnModuleInit {
         .execute()
 
       await queryRunner.commitTransaction()
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Phiếu nhập kho ${stockInExists.stki_code} vừa được khôi phục`,
+          noti_title: `Nhập kho`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
 
       return deleted
     } catch (error) {

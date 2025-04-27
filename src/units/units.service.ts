@@ -11,23 +11,39 @@ import { UpdateUnitDto } from './dto/update-unit.dto'
 import { UpdateResult } from 'typeorm'
 import { UpdateStatusUnitDto } from './dto/update-status-unit.dto'
 import { IUnitsService } from './unit.interface'
+import { sendMessageToKafka } from 'src/utils/kafka'
 
 @Injectable()
 export class UnitsService implements IUnitsService {
   constructor(
     private readonly unitRepo: UnitRepo,
     private readonly unitQuery: UnitQuery
-  ) {}
+  ) { }
 
   async createUnit(createUnitDto: CreateUnitDto, account: IAccount): Promise<UnitEntity> {
     try {
-      return this.unitRepo.createUnit({
+      const unit = await this.unitRepo.createUnit({
         unt_name: createUnitDto.unt_name,
         unt_description: createUnitDto.unt_description,
         unt_symbol: createUnitDto.unt_symbol,
         unt_res_id: account.account_restaurant_id,
         createdBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id
       })
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Đơn vị đo ${createUnitDto.unt_name} vừa được tạo`,
+          noti_title: `Đơn vị đo`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return unit
+
     } catch (error) {
       saveLogSystem({
         action: 'createUnit',
@@ -65,7 +81,7 @@ export class UnitsService implements IUnitsService {
       if (!catIngredientExist) {
         throw new BadRequestError('Đơn vị đo không tồn tại')
       }
-      return this.unitRepo.updateUnit({
+      const update = await this.unitRepo.updateUnit({
         unt_name: updateUnitDto.unt_name,
         unt_description: updateUnitDto.unt_description,
         updatedBy: account.account_employee_id ? account.account_employee_id : account.account_restaurant_id,
@@ -73,6 +89,19 @@ export class UnitsService implements IUnitsService {
         unt_symbol: updateUnitDto.unt_symbol,
         unt_id: updateUnitDto.unt_id
       })
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Đơn vị đo ${updateUnitDto.unt_name} vừa được cập nhật`,
+          noti_title: `Đơn vị đo`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return update
     } catch (error) {
       saveLogSystem({
         action: 'updateUnit',
@@ -93,7 +122,19 @@ export class UnitsService implements IUnitsService {
       if (!catIngredientExist) {
         throw new BadRequestError('Đơn vị đo không tồn tại')
       }
-      return this.unitRepo.deleteUnit(unt_id, account)
+      const deleted = await this.unitRepo.deleteUnit(unt_id, account)
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Đơn vị đo ${catIngredientExist.unt_name} vừa bị xóa`,
+          noti_title: `Đơn vị đo`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return deleted
     } catch (error) {
       saveLogSystem({
         action: 'deleteUnit',
@@ -114,7 +155,19 @@ export class UnitsService implements IUnitsService {
       if (!catIngredientExist) {
         throw new BadRequestError('Đơn vị đo không tồn tại')
       }
-      return this.unitRepo.restoreUnit(unt_id, account)
+      const restore = await this.unitRepo.restoreUnit(unt_id, account)
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Đơn vị đo ${catIngredientExist.unt_name} vừa được khôi phục`,
+          noti_title: `Đơn vị đo`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return restore
     } catch (error) {
       saveLogSystem({
         action: 'restoreUnit',
@@ -135,7 +188,20 @@ export class UnitsService implements IUnitsService {
       if (!catIngredientExist) {
         throw new BadRequestError('Đơn vị đo không tồn tại')
       }
-      return this.unitRepo.updateStatusUnit(updateStatusUnitDto, account)
+      const update = await this.unitRepo.updateStatusUnit(updateStatusUnitDto, account)
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Đơn vị đo ${catIngredientExist.unt_name} vừa được cập nhật trạng thái`,
+          noti_title: `Đơn vị đo`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return update
     } catch (error) {
       saveLogSystem({
         action: 'updateStatusUnit',

@@ -21,6 +21,7 @@ import { ResultPagination } from 'src/interface/resultPagination.interface'
 import { IStockOutService } from './stock-out.interface'
 import { callGeminiAPI } from 'src/utils/gemini.api'
 import * as pdfParse from 'pdf-parse';
+import { sendMessageToKafka } from 'src/utils/kafka'
 @Injectable()
 export class StockOutService implements IStockOutService {
   constructor(
@@ -100,7 +101,7 @@ export class StockOutService implements IStockOutService {
         })
       )
 
-      const stockIn = await queryRunner.manager.save(StockOutEntity, {
+      const stockOut = await queryRunner.manager.save(StockOutEntity, {
         stko_res_id: account.account_restaurant_id,
         spli_id,
         stko_code,
@@ -117,7 +118,7 @@ export class StockOutService implements IStockOutService {
       await Promise.all(
         stock_out_items.map(async (item) => {
           await queryRunner.manager.save(StockOutItemEntity, {
-            stko_id: stockIn.stko_id,
+            stko_id: stockOut.stko_id,
             stko_item_res_id: account.account_restaurant_id,
             igd_id: item.igd_id,
             stko_item_quantity: item.stko_item_quantity,
@@ -128,8 +129,18 @@ export class StockOutService implements IStockOutService {
       )
 
       await queryRunner.commitTransaction()
-
-      return stockIn
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Phiếu xuất kho ${createStockOutDto.stko_code} vừa được tạo`,
+          noti_title: `Xuất kho`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+      return stockOut
     } catch (error) {
       await queryRunner.rollbackTransaction()
       saveLogSystem({
@@ -167,8 +178,8 @@ export class StockOutService implements IStockOutService {
       let { stko_date } = updateStockOutDto
       stko_date = new Date(new Date(stko_date).toISOString().split('T')[0])
 
-      const stockInExists = await this.stockOutQuery.findOneById(stko_id, account)
-      if (!stockInExists) {
+      const stockOutExists = await this.stockOutQuery.findOneById(stko_id, account)
+      if (!stockOutExists) {
         throw new BadRequestError('Phiếu xuất không tồn tại')
       }
 
@@ -235,7 +246,7 @@ export class StockOutService implements IStockOutService {
         })
       )
 
-      const stockIn = queryRunner.manager
+      const stockOut = queryRunner.manager
         .createQueryBuilder()
         .update(StockOutEntity)
         .set({
@@ -260,7 +271,19 @@ export class StockOutService implements IStockOutService {
 
       await queryRunner.commitTransaction()
 
-      return stockIn
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Phiếu xuất kho ${updateStockOutDto.stko_code} vừa được cập nhật`,
+          noti_title: `Xuất kho`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
+      return stockOut
     } catch (error) {
       saveLogSystem({
         action: 'updateStockOut',
@@ -361,8 +384,8 @@ export class StockOutService implements IStockOutService {
       await queryRunner.connect()
       await queryRunner.startTransaction()
 
-      const stockInExists = await this.stockOutQuery.findOneById(stko_id, account)
-      if (!stockInExists) {
+      const stockOutExists = await this.stockOutQuery.findOneById(stko_id, account)
+      if (!stockOutExists) {
         throw new BadRequestError('Phiếu xuất không tồn tại')
       }
       const listStockOutItems = await this.stockOutItemQuery.findOneByStockOutId(stko_id, account)
@@ -403,6 +426,18 @@ export class StockOutService implements IStockOutService {
 
       await queryRunner.commitTransaction()
 
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Phiếu xuất kho ${stockOutExists.stko_code} vừa được xóa`,
+          noti_title: `Xuất kho`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
       return deleted
     } catch (error) {
       await queryRunner.rollbackTransaction()
@@ -425,8 +460,8 @@ export class StockOutService implements IStockOutService {
       await queryRunner.connect()
       await queryRunner.startTransaction()
 
-      const stockInExists = await this.stockOutQuery.findOneById(stko_id, account)
-      if (!stockInExists) {
+      const stockOutExists = await this.stockOutQuery.findOneById(stko_id, account)
+      if (!stockOutExists) {
         throw new BadRequestError('Phiếu xuất không tồn tại')
       }
       const listStockOutItems = await this.stockOutItemQuery.findOneByStockOutId(stko_id, account)
@@ -465,6 +500,18 @@ export class StockOutService implements IStockOutService {
 
       await queryRunner.commitTransaction()
 
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: account.account_restaurant_id,
+          noti_content: `Phiếu xuất kho ${stockOutExists.stko_code} vừa được khôi phục`,
+          noti_title: `Xuất kho`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
+        })
+      })
+
       return deleted
     } catch (error) {
       await queryRunner.rollbackTransaction()
@@ -483,16 +530,16 @@ export class StockOutService implements IStockOutService {
 
   async findOneById(stko_id: string, account: IAccount): Promise<StockOutEntity> {
     try {
-      const stockIn = await this.stockOutQuery.findOneById(stko_id, account)
-      if (!stockIn) {
+      const stockOut = await this.stockOutQuery.findOneById(stko_id, account)
+      if (!stockOut) {
         throw new BadRequestError('Phiếu xuất không tồn tại')
       }
 
-      const stockInItems = await this.stockOutItemQuery.findOneByStockOutId(stko_id, account)
+      const stockOutItems = await this.stockOutItemQuery.findOneByStockOutId(stko_id, account)
 
-      stockIn.items = stockInItems
+      stockOut.items = stockOutItems
 
-      return stockIn
+      return stockOut
     } catch (error) {
       saveLogSystem({
         action: 'findOneById',
