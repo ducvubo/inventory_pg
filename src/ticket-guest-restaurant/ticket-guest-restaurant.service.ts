@@ -24,7 +24,7 @@ export class TicketGuestRestaurantService implements OnModuleInit {
   constructor(
     private readonly ticketGuestRestaurantRepo: TicketGuestRestaurantRepo,
     private readonly ticketGuestRestaurantQuery: TicketGuestRestaurantQuery
-  ) {}
+  ) { }
 
   @Client({
     transport: Transport.GRPC,
@@ -174,6 +174,18 @@ export class TicketGuestRestaurantService implements OnModuleInit {
           restaurant_address: JSON.parse(restaurantExist.data).restaurant_address,
           type: this.getTextType(createTicketGuestRestaurantDto.tkgr_type),
           priority: this.getTextPriority(createTicketGuestRestaurantDto.tkgr_priority)
+        })
+      })
+
+      sendMessageToKafka({
+        topic: 'NOTIFICATION_ACCOUNT_CREATE',
+        message: JSON.stringify({
+          restaurantId: createTicketGuestRestaurantDto.tkgr_res_id,
+          noti_content: `Nhà hàng vừa có hỏi đáp mới từ ${createTicketGuestRestaurantDto.tkgr_user_email} về nội dung ${createTicketGuestRestaurantDto.tkgr_type}`,
+          noti_title: `Hỏi đáp`,
+          noti_type: 'table',
+          noti_metadata: JSON.stringify({ text: 'test' }),
+          sendObject: 'all_account'
         })
       })
 
