@@ -12,7 +12,7 @@ import { ServerErrorDefault } from 'src/utils/errorResponse'
 @Injectable()
 export class TicketGuestRestaurantQuery {
   private readonly elasticSearch = getElasticsearch().instanceConnect
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
 
   async getTicketGuestRestaurantPagination({
     id_user_guest,
@@ -63,6 +63,7 @@ export class TicketGuestRestaurantQuery {
         should.push({ term: { 'id_user_guest.keyword': id_user_guest } })
       }
 
+
       if (tkgr_user_id && tkgr_user_id !== '0') {
         should.push({ term: { tkgr_user_id: tkgr_user_id } })
       }
@@ -77,7 +78,8 @@ export class TicketGuestRestaurantQuery {
         must.push({ match: { tkgr_type } })
       }
       if (q) {
-        must.push({ match: { q } })
+        must.push({ match: { tkgr_title: q } })
+        must.push({ match: { tkgr_description: q } })
       }
 
       const query: any = {
@@ -178,7 +180,8 @@ export class TicketGuestRestaurantQuery {
         must.push({ match: { tkgr_type } })
       }
       if (q) {
-        must.push({ match: { q } })
+        must.push({ match: { tkgr_title: q } })
+        must.push({ match: { tkgr_description: q } })
       }
 
       const result = (await this.elasticSearch.search({
