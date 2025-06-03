@@ -343,9 +343,6 @@ export class IngredientsService implements IIngredientsService {
     }
   }
 
-
-
-
   async getTotalStockValue({ startDate, endDate }: GetStatsDto, account: IAccount) {
     const queryBuilder = this.stockInItemRepo
       .createQueryBuilder('si')

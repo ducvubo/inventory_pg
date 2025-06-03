@@ -20,12 +20,12 @@ class LoggerService {
     // Lấy thông tin từ ConfigService
     this.channelId = this.configService.get<string>('CHANNELID_DISCORD_LOGINFOR')
 
-    this.client.on('ready', () => {
-      console.log(`Logged in as ${this.client.user?.tag}`)
-    })
+    // this.client.on('ready', () => {
+    //   console.log(`Logged in as ${this.client.user?.tag}`)
+    // })
 
     // Đăng nhập bằng Token từ ConfigService
-    this.client.login(this.configService.get<string>('TOKEN_DISCORD_LOGINFOR'))
+    // this.client.login(this.configService.get<string>('TOKEN_DISCORD_LOGINFOR'))
   }
 
   sendLog(logData: {
@@ -60,16 +60,16 @@ class LoggerService {
       ]
     }
 
-    this.sendToMessage(formattedMessage)
+    // this.sendToMessage(formattedMessage)
   }
 
   private sendToMessage(message: any) {
-    const channel = this.client.channels.cache.get(this.channelId!) as TextChannel
-    if (!channel) {
-      console.error(`Couldn't find the channel...`, this.channelId)
-      return
-    }
-    channel.send(message).catch((e) => console.error(e))
+    // const channel = this.client.channels.cache.get(this.channelId!) as TextChannel
+    // if (!channel) {
+    // console.error(`Couldn't find the channel...`, this.channelId)
+    // return
+    // }
+    // channel.send(message).catch((e) => console.error(e))
   }
 }
 
