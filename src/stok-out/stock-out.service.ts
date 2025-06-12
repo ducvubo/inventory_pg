@@ -579,10 +579,11 @@ Dựa vào nội dung sau, hãy trích xuất và trả về dữ liệu ở d�
   - stko_item_unit: Đơn vị tính (từ cột "Đơn yị tinh", ví dụ: "Chai", "Túi")
   - stko_item_quantity: Số lượng xuất (từ cột "Số lượng", ví dụ: "10", "20")
   - stko_item_price: Đơn giá (từ cột "Đơn giá", ví dụ: "10000")
-  - igd_id: Tên sản phẩm (chỉ lấy phần tên nằm trong cột "Tên, sản phẩm, hàng hóa", không bao gồm mã số, ví dụ từ dòng "Nước mắn Nuocman" thì chỉ lấy "Nước mắn"; không được thêm hoặc suy diễn mô tả chi tiết như "Ajinomoto", "Knorr", "nhập khẩu", v.v.)
+  - stko_item_name: Tên sản phẩm (từ cột "Tên, sản phắm, hảng hóa", chỉ lấy tên riêng, không bao gồm mã số)
 
 
 Lưu ý:
+- Đảm bảo không gộp mã số vào tên sản phẩm trong stki_item_name.
 - Nếu trường nào không có dữ liệu, để trống bằng chuỗi rỗng "" hoặc mảng rỗng [] cho items.
 - Đảm bảo dữ liệu khớp với cấu trúc của StockOutEntity và StockOutItemEntity.
 - Chỉ trả về dữ liệu JSON thuần túy, không giải thích hay ký hiệu markdown.
