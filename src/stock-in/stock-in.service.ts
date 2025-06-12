@@ -78,7 +78,7 @@ export class StockInService implements IStockInService, OnModuleInit {
 
       const codeExist = await this.stockInQuery.findOneByCode(stki_code, account)
       if (codeExist) {
-        throw new BadRequestError('Mã phiếu nhập đã tồn tại')
+        throw new BadRequestError('Mã phiếu nhập đã tồn tại, hoặc đã bị xóa vui lòng kiểm tra lại')
       }
 
       if (stki_receiver_type === 'employee') {
@@ -203,7 +203,7 @@ export class StockInService implements IStockInService, OnModuleInit {
         //lăp qua danh sách mã phiếu nhập
         for (const item of codeExist) {
           if (item.stki_id !== stki_id) {
-            throw new BadRequestError('Mã phiếu nhập đã tồn tại')
+            throw new BadRequestError('Mã phiếu nhập đã tồn tại, hoặc đã bị xóa vui lòng kiểm tra lại')
           }
         }
       }

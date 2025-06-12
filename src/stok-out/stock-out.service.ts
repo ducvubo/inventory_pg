@@ -76,7 +76,7 @@ export class StockOutService implements IStockOutService {
 
       const codeExist = await this.stockOutQuery.findOneByCode(stko_code, account)
       if (codeExist) {
-        throw new BadRequestError('Mã phiếu xuất đã tồn tại')
+        throw new BadRequestError('Mã phiếu xuất đã tồn tại, hoặc đã bị xóa vui lòng kiểm tra lại')
       }
 
       if (stko_seller_type === 'employee') {
@@ -196,7 +196,7 @@ export class StockOutService implements IStockOutService {
         //lăp qua danh sách mã phiếu xuất
         for (const item of codeExist) {
           if (item.stko_id !== stko_id) {
-            throw new BadRequestError('Mã phiếu xuất đã tồn tại')
+            throw new BadRequestError('Mã phiếu xuất đã tồn tại, hoặc đã bị xóa vui lòng kiểm tra lại')
           }
         }
       }
