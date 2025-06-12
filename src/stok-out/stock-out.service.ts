@@ -585,7 +585,6 @@ Dựa vào nội dung sau, hãy trích xuất và trả về dữ liệu ở d�
 Lưu ý:
 - Đảm bảo không gộp mã số vào tên sản phẩm trong stki_item_name.
 - Nếu trường nào không có dữ liệu, để trống bằng chuỗi rỗng "" hoặc mảng rỗng [] cho items.
-- Đảm bảo dữ liệu khớp với cấu trúc của StockOutEntity và StockOutItemEntity.
 - Chỉ trả về dữ liệu JSON thuần túy, không giải thích hay ký hiệu markdown.
 
 Nội dung:
