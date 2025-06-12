@@ -579,7 +579,7 @@ Dựa vào nội dung sau, hãy trích xuất và trả về dữ liệu ở d�
   - stko_item_unit: Đơn vị tính (từ cột "Đơn yị tinh", ví dụ: "Chai", "Túi")
   - stko_item_quantity: Số lượng xuất (từ cột "Số lượng", ví dụ: "10", "20")
   - stko_item_price: Đơn giá (từ cột "Đơn giá", ví dụ: "10000")
-  - igd_id: Tên sản phẩm (chỉ lấy **tên riêng**, ví dụ: "Nước mắn Nuocman" thì chỉ lấy "Nước mắn"; **loại bỏ mã số** hoặc ký hiệu đi kèm như "Nuocman", không thêm hoặc giữ lại bất kỳ thông tin nào không phải là tên)
+  - igd_id: Tên sản phẩm (chỉ lấy phần tên nằm trong cột "Tên, sản phẩm, hàng hóa", không bao gồm mã số, ví dụ từ dòng "Nước mắn Nuocman" thì chỉ lấy "Nước mắn"; không được thêm hoặc suy diễn mô tả chi tiết như "Ajinomoto", "Knorr", "nhập khẩu", v.v.)
 
 
 Lưu ý:
