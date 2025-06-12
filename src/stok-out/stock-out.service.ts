@@ -579,7 +579,7 @@ Dựa vào nội dung sau, hãy trích xuất và trả về dữ liệu ở d�
   - stko_item_unit: Đơn vị tính (từ cột "Đơn yị tinh", ví dụ: "Chai", "Túi")
   - stko_item_quantity: Số lượng xuất (từ cột "Số lượng", ví dụ: "10", "20")
   - stko_item_price: Đơn giá (từ cột "Đơn giá", ví dụ: "10000")
-  - igd_id: Tên sản phẩm (từ cột "Tên, sản phắm, hảng hóa", chỉ lấy tên riêng, không bao gồm mã số)
+  - igd_id: Tên sản phẩm (từ cột "Tên, sản phắm, hảng hóa", chỉ lấy tên riêng, không bao gồm mã số, không thêm thông tin nào khác)
 
 Lưu ý:
 - Nếu trường nào không có dữ liệu, để trống bằng chuỗi rỗng "" hoặc mảng rỗng [] cho items.
