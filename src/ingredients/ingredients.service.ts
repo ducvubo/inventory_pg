@@ -390,7 +390,7 @@ export class IngredientsService implements IIngredientsService {
 
     const stockOuts = await stockOutQueryBuilder.getRawOne();
 
-    const totalStockValue = (parseFloat(stockIns?.totalIn || '0') - parseFloat(stockOuts?.totalOut || '0')) || 0;
+    const totalStockValue = (parseFloat(stockOuts?.totalOut || '0') - parseFloat(stockIns?.totalIn || '0')) || 0;
     return { totalStockValue: parseFloat(totalStockValue.toFixed(2)) };
   }
 
