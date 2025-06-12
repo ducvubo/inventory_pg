@@ -179,6 +179,10 @@ export class UnitQuery {
       const result = await this.elasticSearch.search({
         index: UNIT_ELASTICSEARCH_INDEX,
         body: {
+          _source: ['unt_id', 'unt_name'],
+          size: 1000,
+          sort: [{ updatedAt: { order: 'desc' } }],
+          from: 0,
           query: {
             bool: {
               must: [

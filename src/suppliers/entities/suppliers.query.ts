@@ -177,6 +177,9 @@ export class SupplierQuery {
         index: SUPPLIER_ELASTICSEARCH_INDEX,
         body: {
           _source: ['spli_id', 'spli_name'],
+          size: 1000,
+          sort: [{ updatedAt: { order: 'desc' } }],
+          from: 0,
           query: {
             bool: {
               must: [
