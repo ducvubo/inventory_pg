@@ -101,19 +101,8 @@ export class IngredientsController {
     return this.ingredientsService.getTotalStockValue(query, account);
   }
 
-  @Get('stock-in-trends')
-  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
-  @UseGuards(AccountAuthGuard)
-  async getStockInTrends(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
-    return this.ingredientsService.getStockInTrends(query, account);
-  }
 
-  @Get('stock-out-trends')
-  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
-  @UseGuards(AccountAuthGuard)
-  async getStockOutTrends(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
-    return this.ingredientsService.getStockOutTrends(query, account);
-  }
+
 
   @Get('low-stock')
   @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
@@ -122,12 +111,6 @@ export class IngredientsController {
     return this.ingredientsService.getLowStockIngredients(query, account);
   }
 
-  @Get('top-ingredients')
-  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
-  @UseGuards(AccountAuthGuard)
-  async getTopIngredients(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
-    return this.ingredientsService.getTopIngredients(query, account);
-  }
 
   @Get('recent-transactions')
   @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
@@ -136,16 +119,20 @@ export class IngredientsController {
     return this.ingredientsService.getRecentStockTransactions(query, account);
   }
 
-  @Get('stock-by-category')
+
+  @Get('stock-usage-by-type')
   @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
   @UseGuards(AccountAuthGuard)
-  async getStockByCategory(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
-    return this.ingredientsService.getStockByCategory(query, account);
+  async getStockUsageByType(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getStockUsageByType(query, account);
   }
 
-
-
-
+  @Get('stock-turnover-rate')
+  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getStockTurnoverRate(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    return this.ingredientsService.getStockTurnoverRate(query, account);
+  }
 
 
   @Patch('restore/:igd_id')

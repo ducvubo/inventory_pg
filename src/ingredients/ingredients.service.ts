@@ -394,86 +394,6 @@ export class IngredientsService implements IIngredientsService {
     return { totalStockValue: parseFloat(totalStockValue.toFixed(2)) };
   }
 
-  async getStockInTrends({ startDate, endDate }: GetStatsDto, account: IAccount) {
-
-    const queryBuilder = this.stockInItemRepo
-      .createQueryBuilder('si')
-      .leftJoin(
-        'si.stockIn',
-        'stockIn',
-        'stockIn.deletedAt IS NULL' +
-        (startDate && endDate
-          ? ' AND stockIn.stki_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')'
-          : ''),
-        { startDate, endDate }
-      )
-      .select('TO_CHAR(stockIn.stki_date, \'YYYY-MM-DD\')', 'date')
-      .addSelect('SUM(si.stki_item_quantity_real)', 'quantity')
-      .addSelect('SUM(si.stki_item_quantity_real * si.stki_item_price)', 'value')
-      .where('si.deletedAt IS NULL');
-
-    if (account.account_restaurant_id) {
-      queryBuilder.andWhere('si.stki_item_res_id = :restaurantId', {
-        restaurantId: account.account_restaurant_id,
-      });
-    }
-
-    queryBuilder
-      .groupBy('TO_CHAR(stockIn.stki_date, \'YYYY-MM-DD\')')
-      .orderBy('TO_CHAR(stockIn.stki_date, \'YYYY-MM-DD\')', 'ASC');
-
-
-    const trends = await queryBuilder.getRawMany();
-
-    return trends.length > 0
-      ? trends.map((t) => ({
-        date: t.date,
-        quantity: parseFloat(t.quantity) || 0,
-        value: parseFloat(parseFloat(t.value || '0').toFixed(2)),
-      }))
-      : [];
-  }
-
-  async getStockOutTrends({ startDate, endDate }: GetStatsDto, account: IAccount) {
-
-    const queryBuilder = this.stockOutItemRepo
-      .createQueryBuilder('so')
-      .leftJoin(
-        'so.stockOut',
-        'stockOut',
-        'stockOut.deletedAt IS NULL' +
-        (startDate && endDate
-          ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')'
-          : ''),
-        { startDate, endDate }
-      )
-      .select('TO_CHAR(stockOut.stko_date, \'YYYY-MM-DD\')', 'date')
-      .addSelect('SUM(so.stko_item_quantity)', 'quantity')
-      .addSelect('SUM(so.stko_item_quantity * so.stko_item_price)', 'value')
-      .where('so.deletedAt IS NULL');
-
-    if (account.account_restaurant_id) {
-      queryBuilder.andWhere('so.stko_item_res_id = :restaurantId', {
-        restaurantId: account.account_restaurant_id,
-      });
-    }
-
-    queryBuilder
-      .groupBy('TO_CHAR(stockOut.stko_date, \'YYYY-MM-DD\')')
-      .orderBy('TO_CHAR(stockOut.stko_date, \'YYYY-MM-DD\')', 'ASC');
-
-
-    const trends = await queryBuilder.getRawMany();
-
-    return trends.length > 0
-      ? trends.map((t) => ({
-        date: t.date,
-        quantity: parseFloat(t.quantity) || 0,
-        value: parseFloat(parseFloat(t.value || '0').toFixed(2)),
-      }))
-      : [];
-  }
-
   async getLowStockIngredients({ startDate, endDate, threshold = 10 }: GetLowStockDto, account: IAccount) {
     threshold = +threshold || 10;
 
@@ -523,46 +443,6 @@ export class IngredientsService implements IIngredientsService {
         igd_name: item.IGD_NAME,
         stock: parseFloat(item.STOCK) || 0,
         unit: item.UNIT || 'unit',
-      }))
-      : [];
-  }
-  async getTopIngredients({ startDate, endDate }: GetStatsDto, account: IAccount) {
-    const queryBuilder = this.stockOutItemRepo
-      .createQueryBuilder('so')
-      .leftJoin('so.ingredient', 'i', 'i.deletedAt IS NULL')
-      .leftJoin(
-        'so.stockOut',
-        'stockOut',
-        'stockOut.deletedAt IS NULL' +
-        (startDate && endDate
-          ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')'
-          : ''),
-        { startDate, endDate }
-      )
-      .select([
-        'i.igd_name AS igd_name',
-        'SUM(so.stko_item_quantity) AS quantity',
-        'SUM(so.stko_item_quantity * so.stko_item_price) AS value',
-      ])
-      .where('so.deletedAt IS NULL')
-      .groupBy('i.igd_id, i.igd_name')
-      .orderBy('SUM(so.stko_item_quantity)', 'DESC')
-      .limit(10);
-
-    if (account.account_restaurant_id) {
-      queryBuilder.andWhere('so.stko_item_res_id = :restaurantId', {
-        restaurantId: account.account_restaurant_id,
-      });
-    }
-
-
-    const topIngredients = await queryBuilder.getRawMany();
-
-    return topIngredients.length > 0
-      ? topIngredients.map((item) => ({
-        igd_name: item.igd_name,
-        quantity: parseFloat(item.quantity) || 0,
-        value: parseFloat(parseFloat(item.value || '0').toFixed(2)),
       }))
       : [];
   }
@@ -652,54 +532,75 @@ export class IngredientsService implements IIngredientsService {
     return transactions;
   }
 
-  async getStockByCategory({ startDate, endDate }: GetStatsDto, account: IAccount) {
+  async getStockTurnoverRate(dto: GetStatsDto, account: IAccount) {
+    const { startDate, endDate } = dto;
     const queryBuilder = this.ingredientRepoDas
       .createQueryBuilder('i')
-      .leftJoin('i.stockInItems', 'si', 'si.deletedAt IS NULL')
-      .leftJoin(
-        'si.stockIn',
-        'stockIn',
-        'stockIn.deletedAt IS NULL' +
-        (startDate && endDate
-          ? ' AND stockIn.stki_date BETWEEN TO_DATE(:startDateIn, \'YYYY-MM-DD\') AND TO_DATE(:endDateIn, \'YYYY-MM-DD\')'
-          : ''),
-        { startDateIn: startDate, endDateIn: endDate }
-      )
-      .leftJoin('i.stockOutItems', 'so', 'so.deletedAt IS NULL')
-      .leftJoin(
-        'so.stockOut',
-        'stockOut',
-        'stockOut.deletedAt IS NULL' +
-        (startDate && endDate
-          ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDateOut, \'YYYY-MM-DD\') AND TO_DATE(:endDateOut, \'YYYY-MM-DD\')'
-          : ''),
-        { startDateOut: startDate, endDateOut: endDate }
-      )
-      .leftJoin('i.category', 'cat', 'cat.deletedAt IS NULL')
+      .leftJoin('i.stockInItems', 'si')
+      .leftJoin('si.stockIn', 'stockIn', 'stockIn.deletedAt IS NULL' +
+        (startDate && endDate ? ' AND stockIn.stki_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
+        { startDate, endDate })
+      .leftJoin('i.stockOutItems', 'so')
+      .leftJoin('so.stockOut', 'stockOut', 'stockOut.deletedAt IS NULL' +
+        (startDate && endDate ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
+        { startDate, endDate })
+      .leftJoin('i.unit', 'unit')
       .select([
-        'COALESCE(cat.cat_igd_name, \'Không xác định\') AS category',
-        'COALESCE(SUM(si.stki_item_quantity_real), 0) - COALESCE(SUM(so.stko_item_quantity), 0) AS stock',
-        'COALESCE(SUM(si.stki_item_quantity_real * si.stki_item_price), 0) - COALESCE(SUM(so.stko_item_quantity * so.stko_item_price), 0) AS value',
+        'i.igd_id AS igd_id',
+        'i.igd_name AS igd_name',
+        'COALESCE(SUM(so.stko_item_quantity), 0) AS total_out',
+        '(COALESCE(SUM(si.stki_item_quantity_real), 0) + COALESCE(SUM(so.stko_item_quantity), 0)) / 2 AS avg_stock',
+        'COALESCE(unit.unt_symbol, \'unit\') AS unit',
       ])
-      .where('i.deletedAt IS NULL')
-      .groupBy('cat.cat_igd_id, cat.cat_igd_name');
+      .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
+      .where('i.deletedAt IS NULL');
 
     if (account.account_restaurant_id) {
-      queryBuilder.andWhere('i.igd_res_id = :restaurantId', {
-        restaurantId: account.account_restaurant_id,
-      });
+      queryBuilder.andWhere('i.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id });
     }
 
+    const results = await queryBuilder.getRawMany();
 
-    const stockByCategory = await queryBuilder.getRawMany();
-
-    return stockByCategory.length > 0
-      ? stockByCategory.map((item) => ({
-        category: item.CATEGORY,
-        stock: parseFloat(item.STOCK) || 0,
-        value: parseFloat(parseFloat(item.VALUE || '0').toFixed(2)),
+    return results
+      .filter(item => parseFloat(item.AVG_STOCK) > 0) // Tránh chia cho 0
+      .map(item => ({
+        igd_name: item.IGD_NAME,
+        turnover_rate: parseFloat((parseFloat(item.TOTAL_OUT) / parseFloat(item.AVG_STOCK)).toFixed(2)),
+        unit: item.UNIT || 'unit',
       }))
-      : [];
+      .sort((a, b) => b.turnover_rate - a.turnover_rate); // Sắp xếp theo tỷ lệ luân chuyển cao nhất
+  }
+
+  async getStockUsageByType(dto: GetStatsDto, account: IAccount) {
+    const { startDate, endDate } = dto;
+    const queryBuilder = this.stockOutItemRepo
+      .createQueryBuilder('so')
+      .leftJoin('so.stockOut', 'stockOut', 'stockOut.deletedAt IS NULL' +
+        (startDate && endDate ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
+        { startDate, endDate })
+      .leftJoin('so.ingredient', 'i')
+      .leftJoin('i.unit', 'unit')
+      .select([
+        'i.igd_name AS igd_name',
+        'SUM(CASE WHEN stockOut.stko_type = \'internal\' THEN so.stko_item_quantity ELSE 0 END) AS internal_quantity',
+        'SUM(CASE WHEN stockOut.stko_type = \'retail\' THEN so.stko_item_quantity ELSE 0 END) AS retail_quantity',
+        'COALESCE(unit.unt_symbol, \'unit\') AS unit',
+      ])
+      .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
+      .where('so.deletedAt IS NULL');
+
+    if (account.account_restaurant_id) {
+      queryBuilder.andWhere('so.stko_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id });
+    }
+
+    const results = await queryBuilder.getRawMany();
+
+    return results.map(item => ({
+      igd_name: item.IGD_NAME,
+      internal_quantity: parseFloat(item.INTERNAL_QUANTITY) || 0,
+      retail_quantity: parseFloat(item.RETAIL_QUANTITY) || 0,
+      unit: item.UNIT || 'unit',
+    }));
   }
 
 }
