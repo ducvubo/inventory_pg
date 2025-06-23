@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable } from '@nestjs/common'
 import { IngredientRepo } from './entities/ingredient.repo'
 import { IngredientQuey } from './entities/ingredient.query'
 import { saveLogSystem } from 'src/log/sendLog.els'
@@ -533,74 +533,115 @@ export class IngredientsService implements IIngredientsService {
   }
 
   async getStockTurnoverRate(dto: GetStatsDto, account: IAccount) {
-    const { startDate, endDate } = dto;
-    const queryBuilder = this.ingredientRepoDas
-      .createQueryBuilder('i')
-      .leftJoin('i.stockInItems', 'si')
-      .leftJoin('si.stockIn', 'stockIn', 'stockIn.deletedAt IS NULL' +
-        (startDate && endDate ? ' AND stockIn.stki_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
-        { startDate, endDate })
-      .leftJoin('i.stockOutItems', 'so')
-      .leftJoin('so.stockOut', 'stockOut', 'stockOut.deletedAt IS NULL' +
-        (startDate && endDate ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
-        { startDate, endDate })
-      .leftJoin('i.unit', 'unit')
-      .select([
-        'i.igd_id AS igd_id',
-        'i.igd_name AS igd_name',
-        'COALESCE(SUM(so.stko_item_quantity), 0) AS total_out',
-        '(COALESCE(SUM(si.stki_item_quantity_real), 0) + COALESCE(SUM(so.stko_item_quantity), 0)) / 2 AS avg_stock',
-        'COALESCE(unit.unt_symbol, \'unit\') AS unit',
-      ])
-      .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
-      .where('i.deletedAt IS NULL');
+    try {
+      const { startDate, endDate } = dto;
 
-    if (account.account_restaurant_id) {
-      queryBuilder.andWhere('i.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id });
+      // Kiểm tra định dạng ngày
+      if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
+        throw new BadRequestException('startDate và endDate phải có định dạng YYYY-MM-DD');
+      }
+
+      const queryBuilder = this.ingredientRepoDas
+        .createQueryBuilder('i')
+        .leftJoin('i.stockInItems', 'si')
+        .leftJoin('si.stockIn', 'stockIn', 'stockIn.deletedAt IS NULL' +
+          (startDate && endDate ? ' AND stockIn.stki_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
+          { startDate, endDate })
+        .leftJoin('i.stockOutItems', 'so')
+        .leftJoin('so.stockOut', 'stockOut', 'stockOut.deletedAt IS NULL' +
+          (startDate && endDate ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
+          { startDate, endDate })
+        .leftJoin('i.unit', 'unit')
+        .select([
+          'i.igd_id AS igd_id',
+          'i.igd_name AS igd_name',
+          'COALESCE(SUM(so.stko_item_quantity), 0) AS total_out',
+          '(COALESCE(SUM(si.stki_item_quantity_real), 0) + COALESCE(SUM(so.stko_item_quantity), 0)) / 2 AS avg_stock',
+          'COALESCE(unit.unt_symbol, \'unit\') AS unit',
+        ])
+        .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
+        .where('i.deletedAt IS NULL')
+        .having('COALESCE(SUM(si.stki_item_quantity_real), 0) > 0 OR COALESCE(SUM(so.stko_item_quantity), 0) > 0'); // Chỉ lấy nguyên liệu có giao dịch
+
+      if (account.account_restaurant_id) {
+        queryBuilder.andWhere('i.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id });
+      }
+
+      const results = await queryBuilder.getRawMany();
+
+      return results
+        .filter(item => parseFloat(item.AVG_STOCK) > 0) // Tránh chia cho 0
+        .map(item => ({
+          igd_name: item.IGD_NAME,
+          turnover_rate: parseFloat((parseFloat(item.TOTAL_OUT) / parseFloat(item.AVG_STOCK)).toFixed(2)),
+          unit: item.UNIT || 'unit',
+        }))
+        .sort((a, b) => b.turnover_rate - a.turnover_rate);
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStockTurnoverRate',
+        class: 'IngredientService',
+        function: 'getStockTurnoverRate',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+      throw new ServerErrorDefault(error)
     }
-
-    const results = await queryBuilder.getRawMany();
-
-    return results
-      .filter(item => parseFloat(item.AVG_STOCK) > 0) // Tránh chia cho 0
-      .map(item => ({
-        igd_name: item.IGD_NAME,
-        turnover_rate: parseFloat((parseFloat(item.TOTAL_OUT) / parseFloat(item.AVG_STOCK)).toFixed(2)),
-        unit: item.UNIT || 'unit',
-      }))
-      .sort((a, b) => b.turnover_rate - a.turnover_rate); // Sắp xếp theo tỷ lệ luân chuyển cao nhất
   }
 
   async getStockUsageByType(dto: GetStatsDto, account: IAccount) {
-    const { startDate, endDate } = dto;
-    const queryBuilder = this.stockOutItemRepo
-      .createQueryBuilder('so')
-      .leftJoin('so.stockOut', 'stockOut', 'stockOut.deletedAt IS NULL' +
-        (startDate && endDate ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
-        { startDate, endDate })
-      .leftJoin('so.ingredient', 'i')
-      .leftJoin('i.unit', 'unit')
-      .select([
-        'i.igd_name AS igd_name',
-        'SUM(CASE WHEN stockOut.stko_type = \'internal\' THEN so.stko_item_quantity ELSE 0 END) AS internal_quantity',
-        'SUM(CASE WHEN stockOut.stko_type = \'retail\' THEN so.stko_item_quantity ELSE 0 END) AS retail_quantity',
-        'COALESCE(unit.unt_symbol, \'unit\') AS unit',
-      ])
-      .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
-      .where('so.deletedAt IS NULL');
+    try {
+      const { startDate, endDate } = dto;
 
-    if (account.account_restaurant_id) {
-      queryBuilder.andWhere('so.stko_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id });
+      // Kiểm tra định dạng ngày
+      if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
+        throw new BadRequestException('startDate và endDate phải có định dạng YYYY-MM-DD');
+      }
+
+      const queryBuilder = this.stockOutItemRepo
+        .createQueryBuilder('so')
+        .leftJoin('so.stockOut', 'stockOut', 'stockOut.deletedAt IS NULL' +
+          (startDate && endDate ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
+          { startDate, endDate })
+        .leftJoin('so.ingredient', 'i')
+        .leftJoin('i.unit', 'unit')
+        .select([
+          'i.igd_id AS igd_id',
+          'i.igd_name AS igd_name',
+          'SUM(CASE WHEN stockOut.stko_type = \'internal\' THEN so.stko_item_quantity ELSE 0 END) AS internal_quantity',
+          'SUM(CASE WHEN stockOut.stko_type = \'retail\' THEN so.stko_item_quantity ELSE 0 END) AS retail_quantity',
+          'COALESCE(unit.unt_symbol, \'unit\') AS unit',
+        ])
+        .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
+        .where('so.deletedAt IS NULL')
+        .having('COALESCE(SUM(so.stko_item_quantity), 0) > 0'); // Chỉ lấy nguyên liệu có xuất kho
+
+      if (account.account_restaurant_id) {
+        queryBuilder.andWhere('so.stko_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id });
+      }
+
+      const results = await queryBuilder.getRawMany();
+
+      return results.map(item => ({
+        igd_name: item.IGD_NAME,
+        internal_quantity: parseFloat(item.INTERNAL_QUANTITY) || 0,
+        retail_quantity: parseFloat(item.RETAIL_QUANTITY) || 0,
+        unit: item.UNIT || 'unit',
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStockUsageByType',
+        class: 'IngredientService',
+        function: 'getStockUsageByType',
+        message: error.message,
+        time: new Date(),
+        error: error,
+        type: 'error'
+      })
+      throw new ServerErrorDefault(error)
     }
-
-    const results = await queryBuilder.getRawMany();
-
-    return results.map(item => ({
-      igd_name: item.IGD_NAME,
-      internal_quantity: parseFloat(item.INTERNAL_QUANTITY) || 0,
-      retail_quantity: parseFloat(item.RETAIL_QUANTITY) || 0,
-      unit: item.UNIT || 'unit',
-    }));
   }
 
 }
