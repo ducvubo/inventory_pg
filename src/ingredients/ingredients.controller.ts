@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
 import { IngredientsService } from './ingredients.service'
 import { Acccount, ResponseMessage } from 'src/decorator/customize'
 import { AccountAuthGuard } from 'src/guard/account.guard'
@@ -102,38 +102,123 @@ export class IngredientsController {
   }
 
 
+  @Get('total-inventory')
+  @ResponseMessage('Lấy tổng quan tồn kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getTotalInventory(@Acccount() account: IAccount) {
+    return this.ingredientsService.getTotalInventory(account);
+  }
 
+  @Get('total-inventory-value')
+  @ResponseMessage('Lấy tổng giá trị tồn kho theo nguyên liệu thành công')
+  @UseGuards(AccountAuthGuard)
+  async getTotalInventoryValue(@Acccount() account: IAccount) {
+    return this.ingredientsService.getTotalInventoryValue(account);
+  }
 
   @Get('low-stock')
-  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @ResponseMessage('Lấy danh sách nguyên liệu sắp hết thành công')
   @UseGuards(AccountAuthGuard)
-  async getLowStockIngredients(@Query() query: GetLowStockDto, @Acccount() account: IAccount) {
-    return this.ingredientsService.getLowStockIngredients(query, account);
+  async getLowStockIngredients(
+    @Query('threshold') threshold: string,
+    @Acccount() account: IAccount,
+  ) {
+    return this.ingredientsService.getLowStockIngredients(account, threshold ? +threshold : undefined);
   }
 
-
-  @Get('recent-transactions')
-  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @Get('stock-in-by-time')
+  @ResponseMessage('Lấy thống kê nhập kho theo thời gian thành công')
   @UseGuards(AccountAuthGuard)
-  async getRecentStockTransactions(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
-    return this.ingredientsService.getRecentStockTransactions(query, account);
+  async getStockInByTime(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    if (!query.startDate || !query.endDate) {
+      throw new BadRequestException('Vui lòng cung cấp startDate và endDate');
+    }
+    return this.ingredientsService.getStockInByTime(account, new Date(query.startDate), new Date(query.endDate));
   }
 
-
-  @Get('stock-usage-by-type')
-  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @Get('stock-out-by-time')
+  @ResponseMessage('Lấy thống kê xuất kho theo thời gian thành công')
   @UseGuards(AccountAuthGuard)
-  async getStockUsageByType(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
-    return this.ingredientsService.getStockUsageByType(query, account);
+  async getStockOutByTime(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    if (!query.startDate || !query.endDate) {
+      throw new BadRequestException('Vui lòng cung cấp startDate và endDate');
+    }
+    return this.ingredientsService.getStockOutByTime(account, new Date(query.startDate), new Date(query.endDate));
   }
 
-  @Get('stock-turnover-rate')
-  @ResponseMessage('Lấy tổng giá trị tồn kho thành công')
+  @Get('stock-movement-by-ingredient')
+  @ResponseMessage('Lấy thống kê nhập/xuất kho theo nguyên liệu thành công')
   @UseGuards(AccountAuthGuard)
-  async getStockTurnoverRate(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
-    return this.ingredientsService.getStockTurnoverRate(query, account);
+  async getStockMovementByIngredient(@Acccount() account: IAccount) {
+    return this.ingredientsService.getStockMovementByIngredient(account);
   }
 
+  @Get('total-stock-in-cost')
+  @ResponseMessage('Lấy tổng chi phí nhập kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getTotalStockInCost(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    if (!query.startDate || !query.endDate) {
+      throw new BadRequestException('Vui lòng cung cấp startDate và endDate');
+    }
+    return this.ingredientsService.getTotalStockInCost(account, new Date(query.startDate), new Date(query.endDate));
+  }
+
+  @Get('total-stock-out-value')
+  @ResponseMessage('Lấy tổng giá trị xuất kho thành công')
+  @UseGuards(AccountAuthGuard)
+  async getTotalStockOutValue(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    if (!query.startDate || !query.endDate) {
+      throw new BadRequestException('Vui lòng cung cấp startDate và endDate');
+    }
+    return this.ingredientsService.getTotalStockOutValue(account, new Date(query.startDate), new Date(query.endDate));
+  }
+
+  @Get('stock-in-by-supplier')
+  @ResponseMessage('Lấy thống kê nhập kho theo nhà cung cấp thành công')
+  @UseGuards(AccountAuthGuard)
+  async getStockInBySupplier(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    if (!query.startDate || !query.endDate) {
+      throw new BadRequestException('Vui lòng cung cấp startDate và endDate');
+    }
+    return this.ingredientsService.getStockInBySupplier(account, new Date(query.startDate), new Date(query.endDate));
+  }
+
+  @Get('stock-in-cost-by-supplier')
+  @ResponseMessage('Lấy thống kê chi phí nhập kho theo nhà cung cấp thành công')
+  @UseGuards(AccountAuthGuard)
+  async getStockInCostBySupplier(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    if (!query.startDate || !query.endDate) {
+      throw new BadRequestException('Vui lòng cung cấp startDate và endDate');
+    }
+    return this.ingredientsService.getStockInCostBySupplier(account, new Date(query.startDate), new Date(query.endDate));
+  }
+
+  @Get('inventory-by-category')
+  @ResponseMessage('Lấy thống kê tồn kho theo danh mục thành công')
+  @UseGuards(AccountAuthGuard)
+  async getInventoryByCategory(@Acccount() account: IAccount) {
+    return this.ingredientsService.getInventoryByCategory(account);
+  }
+
+  @Get('stock-in-cost-by-category')
+  @ResponseMessage('Lấy thống kê chi phí nhập kho theo danh mục thành công')
+  @UseGuards(AccountAuthGuard)
+  async getStockInCostByCategory(@Query() query: GetStatsDto, @Acccount() account: IAccount) {
+    if (!query.startDate || !query.endDate) {
+      throw new BadRequestException('Vui lòng cung cấp startDate và endDate');
+    }
+    return this.ingredientsService.getStockInCostByCategory(account, new Date(query.startDate), new Date(query.endDate));
+  }
+
+  @Get('stagnant-ingredients')
+  @ResponseMessage('Lấy danh sách nguyên liệu không hoạt động thành công')
+  @UseGuards(AccountAuthGuard)
+  async getStagnantIngredients(
+    @Query('daysThreshold') daysThreshold: string,
+    @Acccount() account: IAccount,
+  ) {
+    return this.ingredientsService.getStagnantIngredients(account, daysThreshold ? +daysThreshold : undefined);
+  }
 
   @Patch('restore/:igd_id')
   @ResponseMessage('Khôi phục nguyên liệu thành công')

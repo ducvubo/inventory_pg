@@ -39,26 +39,26 @@ export class TicketGuestRestaurantService implements OnModuleInit {
 
   async onModuleInit() {
     this.RestaurantServiceGprc = this.client.getService<IRestaurantServiceGprcClient>('RestaurantServiceGprc')
-    const consumer = await kafkaInstance.getConsumer('SYNC_CLIENT_ID_TICKET_GUEST_RESTAURANT')
-    await consumer.subscribe({ topic: 'SYNC_CLIENT_ID', fromBeginning: true })
-    await consumer.run({
-      eachMessage: async ({ topic, partition, message }) => {
-        const dataMessage = message.value.toString()
-        const data = JSON.parse(dataMessage)
-        const { clientIdOld, clientIdNew } = data
-        this.syncClientIdTicketGuestRestaurant(clientIdOld, clientIdNew).catch((error) => {
-          saveLogSystem({
-            action: 'syncClientIdTicketGuestRestaurant',
-            class: 'TicketGuestRestaurantService',
-            function: 'onModuleInit',
-            message: error.message,
-            time: new Date(),
-            error: error,
-            type: 'error'
-          })
-        })
-      }
-    })
+    // const consumer = await kafkaInstance.getConsumer('SYNC_CLIENT_ID_TICKET_GUEST_RESTAURANT')
+    // await consumer.subscribe({ topic: 'SYNC_CLIENT_ID', fromBeginning: true })
+    // await consumer.run({
+    //   eachMessage: async ({ topic, partition, message }) => {
+    //     const dataMessage = message.value.toString()
+    //     const data = JSON.parse(dataMessage)
+    //     const { clientIdOld, clientIdNew } = data
+    //     this.syncClientIdTicketGuestRestaurant(clientIdOld, clientIdNew).catch((error) => {
+    //       saveLogSystem({
+    //         action: 'syncClientIdTicketGuestRestaurant',
+    //         class: 'TicketGuestRestaurantService',
+    //         function: 'onModuleInit',
+    //         message: error.message,
+    //         time: new Date(),
+    //         error: error,
+    //         type: 'error'
+    //       })
+    //     })
+    //   }
+    // })
   }
 
   async syncClientIdTicketGuestRestaurant(clientIdOld: string, clientIdNew: string) {

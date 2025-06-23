@@ -44,6 +44,7 @@ export class StockInItemEntity extends SampleEntity {
   stki_item_price?: number
 
   @ManyToOne(() => StockInEntity, (stockIn) => stockIn.items, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'stki_id' })
   stockIn?: StockInEntity
 
   @ManyToOne(() => IngredientEntity, (ingredient) => ingredient.stockInItems)

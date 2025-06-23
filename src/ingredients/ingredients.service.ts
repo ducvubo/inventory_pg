@@ -19,7 +19,7 @@ import { StockOutEntity } from 'src/stok-out/entities/stock-out.entity'
 import { CatIngredientEntity } from 'src/cat-ingredient/entities/cat-ingredient.entity'
 import { GetLowStockDto, GetStatsDto } from './dto/get-stats.dto'
 import { sendMessageToKafka } from 'src/utils/kafka'
-
+import { format } from 'date-fns';
 @Injectable()
 export class IngredientsService implements IIngredientsService {
   constructor(
@@ -394,253 +394,590 @@ export class IngredientsService implements IIngredientsService {
     return { totalStockValue: parseFloat(totalStockValue.toFixed(2)) };
   }
 
-  async getLowStockIngredients({ startDate, endDate, threshold = 10 }: GetLowStockDto, account: IAccount) {
-    threshold = +threshold || 10;
-
-
-    const queryBuilder = this.ingredientRepoDas
-      .createQueryBuilder('i')
-      .leftJoin('i.stockInItems', 'si')
-      .leftJoin(
-        'si.stockIn',
-        'stockIn',
-        startDate && endDate
-          ? 'stockIn.stki_date BETWEEN TO_DATE(:startDateIn, \'YYYY-MM-DD\') AND TO_DATE(:endDateIn, \'YYYY-MM-DD\')'
-          : ''
-        , { startDateIn: startDate, endDateIn: endDate }
-      )
-      .leftJoin('i.stockOutItems', 'so')
-      .leftJoin(
-        'so.stockOut',
-        'stockOut',
-        startDate && endDate
-          ? 'stockOut.stko_date BETWEEN TO_DATE(:startDateOut, \'YYYY-MM-DD\') AND TO_DATE(:endDateOut, \'YYYY-MM-DD\')'
-          : ''
-        , { startDateOut: startDate, endDateOut: endDate }
-      )
-      .leftJoin('i.unit', 'unit')
-      .select([
-        'i.igd_id AS igd_id',
-        'i.igd_name AS igd_name',
-        'COALESCE(SUM(si.stki_item_quantity_real), 0) - COALESCE(SUM(so.stko_item_quantity), 0) AS stock',
-        'COALESCE(unit.unt_symbol, \'unit\') AS unit',
-      ])
-      .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
-      .having('COALESCE(SUM(si.stki_item_quantity_real), 0) - COALESCE(SUM(so.stko_item_quantity), 0) <= :threshold', {
-        threshold,
-      });
-
-    if (account.account_restaurant_id) {
-      queryBuilder.where('i.igd_res_id = :restaurantId', {
-        restaurantId: account.account_restaurant_id,
-      });
-    }
-
-    const stockQuery = await queryBuilder.getRawMany();
-
-    return stockQuery.length > 0
-      ? stockQuery.map((item) => ({
-        igd_name: item.IGD_NAME,
-        stock: parseFloat(item.STOCK) || 0,
-        unit: item.UNIT || 'unit',
-      }))
-      : [];
-  }
-
-  async getRecentStockTransactions({ startDate, endDate }: GetStatsDto, account: IAccount) {
-    const stockInQuery = this.stockInItemRepo
-      .createQueryBuilder('si')
-      .leftJoin(
-        'si.stockIn',
-        'stockIn',
-        'stockIn.deletedAt IS NULL' +
-        (startDate && endDate
-          ? ' AND stockIn.stki_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')'
-          : ''),
-        { startDate, endDate }
-      )
-      .leftJoin('si.ingredient', 'i', 'i.deletedAt IS NULL')
-      .select('si.stki_item_id', 'id')
-      .addSelect('stockIn.stki_code', 'code')
-      .addSelect('i.igd_name', 'ingredient')
-      .addSelect('si.stki_item_quantity_real', 'quantity')
-      .addSelect('TO_CHAR(stockIn.stki_date, \'YYYY-MM-DD\')', 'date')
-      .where('si.deletedAt IS NULL');
-
-    if (account.account_restaurant_id) {
-      stockInQuery.andWhere('si.stki_item_res_id = :restaurantId', {
-        restaurantId: account.account_restaurant_id,
-      });
-    }
-
-    stockInQuery.orderBy('stockIn.stki_date', 'DESC').limit(5);
-
-
-    const stockInTransactions = await stockInQuery.getRawMany();
-
-    const stockOutQuery = this.stockOutItemRepo
-      .createQueryBuilder('so')
-      .leftJoin(
-        'so.stockOut',
-        'stockOut',
-        'stockOut.deletedAt IS NULL' +
-        (startDate && endDate
-          ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')'
-          : ''),
-        { startDate, endDate }
-      )
-      .leftJoin('so.ingredient', 'i', 'i.deletedAt IS NULL')
-      .select('so.stko_item_id', 'id')
-      .addSelect('stockOut.stko_code', 'code')
-      .addSelect('i.igd_name', 'ingredient')
-      .addSelect('so.stko_item_quantity', 'quantity')
-      .addSelect('TO_CHAR(stockOut.stko_date, \'YYYY-MM-DD\')', 'date')
-      .where('so.deletedAt IS NULL');
-
-    if (account.account_restaurant_id) {
-      stockOutQuery.andWhere('so.stko_item_res_id = :restaurantId', {
-        restaurantId: account.account_restaurant_id,
-      });
-    }
-
-    stockOutQuery.orderBy('stockOut.stko_date', 'DESC').limit(5);
-
-
-    const stockOutTransactions = await stockOutQuery.getRawMany();
-
-    const transactions = [
-      ...stockInTransactions.map((t) => ({
-        id: t.id,
-        code: t.code,
-        ingredient: t.ingredient,
-        quantity: parseFloat(t.quantity) || 0,
-        date: t.date,
-        type: 'in' as const,
-      })),
-      ...stockOutTransactions.map((t) => ({
-        id: t.id,
-        code: t.code,
-        ingredient: t.ingredient,
-        quantity: parseFloat(t.quantity) || 0,
-        date: t.date,
-        type: 'out' as const,
-      })),
-    ]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10);
-
-    return transactions;
-  }
-
-  async getStockTurnoverRate(dto: GetStatsDto, account: IAccount) {
+  async getTotalInventory(account: IAccount): Promise<
+    Array<{ igd_id: string; igd_name: string; total_quantity: number }>
+  > {
     try {
-      const { startDate, endDate } = dto;
-
-      // Kiểm tra định dạng ngày
-      if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
-        throw new BadRequestException('startDate và endDate phải có định dạng YYYY-MM-DD');
-      }
-
       const queryBuilder = this.ingredientRepoDas
-        .createQueryBuilder('i')
-        .leftJoin('i.stockInItems', 'si')
-        .leftJoin('si.stockIn', 'stockIn', 'stockIn.deletedAt IS NULL' +
-          (startDate && endDate ? ' AND stockIn.stki_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
-          { startDate, endDate })
-        .leftJoin('i.stockOutItems', 'so')
-        .leftJoin('so.stockOut', 'stockOut', 'stockOut.deletedAt IS NULL' +
-          (startDate && endDate ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
-          { startDate, endDate })
-        .leftJoin('i.unit', 'unit')
-        .select([
-          'i.igd_id AS igd_id',
-          'i.igd_name AS igd_name',
-          'COALESCE(SUM(so.stko_item_quantity), 0) AS total_out',
-          '(COALESCE(SUM(si.stki_item_quantity_real), 0) + COALESCE(SUM(so.stko_item_quantity), 0)) / 2 AS avg_stock',
-          'COALESCE(unit.unt_symbol, \'unit\') AS unit',
-        ])
-        .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
-        .where('i.deletedAt IS NULL')
-        .having('COALESCE(SUM(si.stki_item_quantity_real), 0) > 0 OR COALESCE(SUM(so.stko_item_quantity), 0) > 0'); // Chỉ lấy nguyên liệu có giao dịch
-
-      if (account.account_restaurant_id) {
-        queryBuilder.andWhere('i.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id });
-      }
+        .createQueryBuilder('ingredient')
+        .leftJoin('ingredient.stockInItems', 'stockInItem', 'stockInItem.deletedAt IS NULL')
+        .leftJoin('ingredient.stockOutItems', 'stockOutItem', 'stockOutItem.deletedAt IS NULL')
+        .select('ingredient.igd_id', 'igd_id')
+        .addSelect('ingredient.igd_name', 'igd_name')
+        .addSelect(
+          'COALESCE(SUM(stockInItem.stki_item_quantity_real), 0) - COALESCE(SUM(stockOutItem.stko_item_quantity), 0)',
+          'total_quantity',
+        )
+        .where('ingredient.isDeleted = :isDeleted AND ingredient.igd_status = :igdStatus', {
+          isDeleted: 0,
+          igdStatus: 'enable',
+        })
+        .andWhere('ingredient.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .groupBy('ingredient.igd_id, ingredient.igd_name');
 
       const results = await queryBuilder.getRawMany();
-
-      return results
-        .filter(item => parseFloat(item.AVG_STOCK) > 0) // Tránh chia cho 0
-        .map(item => ({
-          igd_name: item.IGD_NAME,
-          turnover_rate: parseFloat((parseFloat(item.TOTAL_OUT) / parseFloat(item.AVG_STOCK)).toFixed(2)),
-          unit: item.UNIT || 'unit',
-        }))
-        .sort((a, b) => b.turnover_rate - a.turnover_rate);
-    } catch (error) {
-      saveLogSystem({
-        action: 'getStockTurnoverRate',
-        class: 'IngredientService',
-        function: 'getStockTurnoverRate',
-        message: error.message,
-        time: new Date(),
-        error: error,
-        type: 'error'
-      })
-      throw new ServerErrorDefault(error)
-    }
-  }
-
-  async getStockUsageByType(dto: GetStatsDto, account: IAccount) {
-    try {
-      const { startDate, endDate } = dto;
-
-      // Kiểm tra định dạng ngày
-      if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
-        throw new BadRequestException('startDate và endDate phải có định dạng YYYY-MM-DD');
-      }
-
-      const queryBuilder = this.stockOutItemRepo
-        .createQueryBuilder('so')
-        .leftJoin('so.stockOut', 'stockOut', 'stockOut.deletedAt IS NULL' +
-          (startDate && endDate ? ' AND stockOut.stko_date BETWEEN TO_DATE(:startDate, \'YYYY-MM-DD\') AND TO_DATE(:endDate, \'YYYY-MM-DD\')' : ''),
-          { startDate, endDate })
-        .leftJoin('so.ingredient', 'i')
-        .leftJoin('i.unit', 'unit')
-        .select([
-          'i.igd_id AS igd_id',
-          'i.igd_name AS igd_name',
-          'SUM(CASE WHEN stockOut.stko_type = \'internal\' THEN so.stko_item_quantity ELSE 0 END) AS internal_quantity',
-          'SUM(CASE WHEN stockOut.stko_type = \'retail\' THEN so.stko_item_quantity ELSE 0 END) AS retail_quantity',
-          'COALESCE(unit.unt_symbol, \'unit\') AS unit',
-        ])
-        .groupBy('i.igd_id, i.igd_name, unit.unt_symbol')
-        .where('so.deletedAt IS NULL')
-        .having('COALESCE(SUM(so.stko_item_quantity), 0) > 0'); // Chỉ lấy nguyên liệu có xuất kho
-
-      if (account.account_restaurant_id) {
-        queryBuilder.andWhere('so.stko_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id });
-      }
-
-      const results = await queryBuilder.getRawMany();
-
-      return results.map(item => ({
-        igd_name: item.IGD_NAME,
-        internal_quantity: parseFloat(item.INTERNAL_QUANTITY) || 0,
-        retail_quantity: parseFloat(item.RETAIL_QUANTITY) || 0,
-        unit: item.UNIT || 'unit',
+      return results.map((item) => ({
+        igd_id: item.igd_id,
+        igd_name: item.igd_name,
+        total_quantity: parseFloat(item.total_quantity || 0),
       }));
     } catch (error) {
       saveLogSystem({
-        action: 'getStockUsageByType',
-        class: 'IngredientService',
-        function: 'getStockUsageByType',
+        action: 'getTotalInventory',
+        class: 'IngredientsService',
+        function: 'getTotalInventory',
         message: error.message,
         time: new Date(),
-        error: error,
-        type: 'error'
-      })
-      throw new ServerErrorDefault(error)
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Lấy tổng giá trị tồn kho (số lượng * giá trung bình)
+   */
+  async getTotalInventoryValue(account: IAccount): Promise<
+    Array<{ igd_id: string; igd_name: string; total_quantity: number; total_value: number }>
+  > {
+    try {
+      const queryBuilder = this.ingredientRepoDas
+        .createQueryBuilder('ingredient')
+        .leftJoin('ingredient.stockInItems', 'stockInItem', 'stockInItem.deletedAt IS NULL')
+        .leftJoin('ingredient.stockOutItems', 'stockOutItem', 'stockOutItem.deletedAt IS NULL')
+        .select('ingredient.igd_id', 'igd_id')
+        .addSelect('ingredient.igd_name', 'igd_name')
+        .addSelect(
+          'COALESCE(SUM(stockInItem.stki_item_quantity_real), 0) - COALESCE(SUM(stockOutItem.stko_item_quantity), 0)',
+          'total_quantity',
+        )
+        .addSelect('AVG(stockInItem.stki_item_price)', 'avg_price')
+        .where('ingredient.isDeleted = :isDeleted AND ingredient.igd_status = :igdStatus', {
+          isDeleted: 0,
+          igdStatus: 'enable',
+        })
+        .andWhere('ingredient.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .groupBy('ingredient.igd_id, ingredient.igd_name');
+
+      const results = await queryBuilder.getRawMany();
+      return results.map((item) => ({
+        igd_id: item.igd_id,
+        igd_name: item.igd_name,
+        total_quantity: parseFloat(item.total_quantity || 0),
+        total_value: parseFloat(
+          ((+item.total_quantity || 0) * (+item.avg_price || 0)).toFixed(2)
+        ),
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getTotalInventoryValue',
+        class: 'IngredientsService',
+        function: 'getTotalInventoryValue',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Lấy danh sách nguyên liệu sắp hết (dưới ngưỡng)
+   */
+  async getLowStockIngredients(
+    account: IAccount,
+    threshold: number = 10,
+  ): Promise<Array<{ igd_id: string; igd_name: string; total_quantity: number; unt_name: string }>> {
+    try {
+      //limit 5
+      const queryBuilder = this.ingredientRepoDas
+        .createQueryBuilder('ingredient')
+        .leftJoin('ingredient.stockInItems', 'stockInItem', 'stockInItem.deletedAt IS NULL')
+        .leftJoin('ingredient.stockOutItems', 'stockOutItem', 'stockOutItem.deletedAt IS NULL')
+        .leftJoin('ingredient.unit', 'unit') // Join với bảng units
+        .select('ingredient.igd_id', 'igd_id')
+        .addSelect('ingredient.igd_name', 'igd_name')
+        .addSelect('unit.unt_name', 'unt_name') // Chọn tên đơn vị từ bảng units
+        .addSelect(
+          'COALESCE(SUM(stockInItem.stki_item_quantity_real), 0) - COALESCE(SUM(stockOutItem.stko_item_quantity), 0)',
+          'total_quantity',
+        )
+        .where('ingredient.isDeleted = :isDeleted AND ingredient.igd_status = :igdStatus', {
+          isDeleted: 0,
+          igdStatus: 'enable',
+        })
+        .andWhere('ingredient.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .groupBy('ingredient.igd_id, ingredient.igd_name, unit.unt_name') // Thêm unit.unt_name vào GROUP BY
+        .having(
+          'COALESCE(SUM(stockInItem.stki_item_quantity_real), 0) - COALESCE(SUM(stockOutItem.stko_item_quantity), 0) < :threshold',
+          { threshold },
+        )
+        .limit(5);
+
+      const results = await queryBuilder.getRawMany();
+      return results.map((item) => ({
+        igd_id: item.igd_id,
+        igd_name: item.igd_name,
+        total_quantity: parseFloat(item.total_quantity || '0'),
+        unt_name: item.unt_name || '', // Xử lý trường hợp null
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getLowStockIngredients',
+        class: 'IngredientsService',
+        function: 'getLowStockIngredients',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+ * Thống kê tổng tiền nhập kho theo thời gian
+ */
+  /**
+  * Thống kê tổng tiền nhập kho theo thời gian
+  */
+  async getStockInByTime(
+    account: IAccount,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Array<{ date: string; total_amount: number; invoice_count: number }>> {
+    try {
+      // Điều chỉnh múi giờ UTC+7 và đảm bảo bao gồm toàn bộ ngày cuối
+      const startDateLocal = new Date(startDate);
+      startDateLocal.setHours(startDateLocal.getHours() + 7);
+      const adjustedEndDate = new Date(endDate);
+      adjustedEndDate.setHours(adjustedEndDate.getHours() + 7);
+      adjustedEndDate.setUTCHours(23, 59, 59, 999);
+
+      const queryBuilder = this.stockInItemRepo
+        .createQueryBuilder('stockInItem')
+        .leftJoin('stockInItem.stockIn', 'stockIn')
+        .select("TO_CHAR(TRUNC(stockIn.stki_date), 'YYYY-MM-DD')", 'date')
+        .addSelect('SUM(stockInItem.stki_item_price * stockInItem.stki_item_quantity_real)', 'total_amount') // Tính tổng tiền
+        .addSelect('COUNT(DISTINCT stockIn.stki_id)', 'invoice_count') // Số lượng hóa đơn trong ngày
+        .where('TRUNC(stockIn.stki_date) BETWEEN TRUNC(:startDate) AND TRUNC(:endDate)', {
+          startDate: startDateLocal,
+          endDate: adjustedEndDate,
+        })
+        .andWhere('stockInItem.stki_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .andWhere('stockIn.stki_res_id = :account_restaurant_id', { account_restaurant_id: account.account_restaurant_id }) // Sửa thành restaurantId
+        .andWhere('stockIn.deletedAt IS NULL')
+        .andWhere('stockInItem.deletedAt IS NULL')
+        .groupBy("TO_CHAR(TRUNC(stockIn.stki_date), 'YYYY-MM-DD')")
+        .orderBy('"date"', 'ASC');
+
+      const sql = queryBuilder.getSql();
+
+      const results = await queryBuilder.getRawMany();
+
+      const data = results.map((item) => ({
+        date: item.date,
+        total_amount: parseFloat(item.total_amount || '0'),
+        invoice_count: parseInt(item.invoice_count || '0'),
+      }));
+      return data;
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStockInByTime',
+        class: 'IngredientsService',
+        function: 'getStockInByTime',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+
+
+  /**
+   * Thống kê tổng tiền xuất kho theo thời gian
+   */
+  /**
+   * Thống kê tổng tiền xuất kho theo thời gian
+   */
+  async getStockOutByTime(
+    account: IAccount,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Array<{ date: string; total_amount: number; invoice_count: number }>> {
+    try {
+
+      const startDateLocal = new Date(startDate);
+      startDateLocal.setHours(startDateLocal.getHours() + 7);
+      const adjustedEndDate = new Date(endDate);
+      adjustedEndDate.setHours(adjustedEndDate.getHours() + 7);
+      adjustedEndDate.setUTCHours(23, 59, 59, 999);
+
+      const queryBuilder = this.stockOutItemRepo
+        .createQueryBuilder('stockOutItem')
+        .leftJoin('stockOutItem.stockOut', 'stockOut')
+        .select("TO_CHAR(TRUNC(stockOut.stko_date), 'YYYY-MM-DD')", 'date')
+        .addSelect('SUM(stockOutItem.stko_item_price * stockOutItem.stko_item_quantity)', 'total_amount') // Tính tổng tiền (giả định cột stko_item_price tồn tại)
+        .addSelect('COUNT(DISTINCT stockOut.stko_id)', 'invoice_count') // Số lượng hóa đơn trong ngày
+        .where('TRUNC(stockOut.stko_date) BETWEEN TRUNC(:startDate) AND TRUNC(:endDate)', {
+          startDate: startDateLocal,
+          endDate: adjustedEndDate,
+        })
+        .andWhere('stockOutItem.stko_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .andWhere('stockOut.stko_res_id = :account_restaurant_id', { account_restaurant_id: account.account_restaurant_id }) // Sửa thành restaurantId
+        .andWhere('stockOut.deletedAt IS NULL')
+        .andWhere('stockOutItem.deletedAt IS NULL')
+        .groupBy("TO_CHAR(TRUNC(stockOut.stko_date), 'YYYY-MM-DD')")
+        .orderBy('"date"', 'ASC');
+
+      const sql = queryBuilder.getSql();
+
+      const results = await queryBuilder.getRawMany();
+
+      const data = results.map((item) => ({
+        date: item.date,
+        total_amount: parseFloat(item.total_amount || '0'),
+        invoice_count: parseInt(item.invoice_count || '0'),
+      }));
+      return data;
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStockOutByTime',
+        class: 'IngredientsService',
+        function: 'getStockOutByTime',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Thống kê nhập/xuất kho theo nguyên liệu
+   */
+  async getStockMovementByIngredient(
+    account: IAccount,
+  ): Promise<Array<{ igd_id: string; igd_name: string; total_in: number; total_out: number }>> {
+    try {
+      const queryBuilder = this.ingredientRepoDas
+        .createQueryBuilder('ingredient')
+        .leftJoin('ingredient.stockInItems', 'stockInItem', 'stockInItem.deletedAt IS NULL')
+        .leftJoin('ingredient.stockOutItems', 'stockOutItem', 'stockOutItem.deletedAt IS NULL')
+        .select('ingredient.igd_id', 'igd_id')
+        .addSelect('ingredient.igd_name', 'igd_name')
+        .addSelect('COALESCE(SUM(stockInItem.stki_item_quantity_real), 0)', 'total_in')
+        .addSelect('COALESCE(SUM(stockOutItem.stko_item_quantity), 0)', 'total_out')
+        .where('ingredient.isDeleted = :isDeleted AND ingredient.igd_status = :igdStatus', {
+          isDeleted: 0,
+          igdStatus: 'enable',
+        })
+        .andWhere('ingredient.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .groupBy('ingredient.igd_id, ingredient.igd_name');
+
+      const results = await queryBuilder.getRawMany();
+      return results.map((item) => ({
+        igd_id: item.igd_id,
+        igd_name: item.igd_name,
+        total_in: parseFloat(item.total_in || 0),
+        total_out: parseFloat(item.total_out || 0),
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStockMovementByIngredient',
+        class: 'IngredientsService',
+        function: 'getStockMovementByIngredient',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Thống kê tổng chi phí nhập kho theo thời gian
+   */
+  async getTotalStockInCost(
+    account: IAccount,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<{ total_cost: number }> {
+    try {
+      const queryBuilder = this.stockInItemRepo
+        .createQueryBuilder('stockInItem')
+        .leftJoin('stockInItem.stockIn', 'stockIn')
+        .select('SUM(stockInItem.stki_item_quantity_real * stockInItem.stki_item_price)', 'total_cost')
+        .where('stockIn.stki_date BETWEEN :startDate AND :endDate', { startDate, endDate })
+        .andWhere('stockInItem.stki_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .andWhere('stockInItem.deletedAt IS NULL AND stockIn.isDeleted = :isDeleted', { isDeleted: 0 });
+
+      const result = await queryBuilder.getRawOne();
+      return { total_cost: parseFloat(result.total_cost || 0) };
+    } catch (error) {
+      saveLogSystem({
+        action: 'getTotalStockInCost',
+        class: 'IngredientsService',
+        function: 'getTotalStockInCost',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Thống kê tổng giá trị xuất kho theo thời gian
+   */
+  async getTotalStockOutValue(
+    account: IAccount,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<{ total_value: number }> {
+    try {
+      const queryBuilder = this.stockOutItemRepo
+        .createQueryBuilder('stockOutItem')
+        .leftJoin('stockOutItem.stockOut', 'stockOut')
+        .select('SUM(stockOutItem.stko_item_quantity * stockOutItem.stko_item_price)', 'total_value')
+        .where('stockOut.stko_date BETWEEN :startDate AND :endDate', { startDate, endDate })
+        .andWhere('stockOutItem.stko_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .andWhere('stockOutItem.deletedAt IS NULL AND stockOut.isDeleted = :isDeleted', { isDeleted: 0 });
+
+      const result = await queryBuilder.getRawOne();
+      return { total_value: parseFloat(result.total_value || 0) };
+    } catch (error) {
+      saveLogSystem({
+        action: 'getTotalStockOutValue',
+        class: 'IngredientsService',
+        function: 'getTotalStockOutValue',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Thống kê số lượng nhập kho theo nhà cung cấp
+   */
+  async getStockInBySupplier(
+    account: IAccount,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Array<{ spli_id: string; spli_name: string; total_quantity: number }>> {
+    try {
+      const queryBuilder = this.stockInItemRepo
+        .createQueryBuilder('stockInItem')
+        .leftJoin('stockInItem.stockIn', 'stockIn')
+        .leftJoin('stockIn.supplier', 'supplier')
+        .select('supplier.spli_id', 'spli_id')
+        .addSelect('supplier.spli_name', 'spli_name')
+        .addSelect('SUM(stockInItem.stki_item_quantity_real)', 'total_quantity')
+        .where('stockIn.stki_date BETWEEN :startDate AND :endDate', { startDate, endDate })
+        .andWhere('stockInItem.stki_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .andWhere('stockInItem.deletedAt IS NULL AND stockIn.isDeleted = :isDeleted', { isDeleted: 0 })
+        .groupBy('supplier.spli_id, supplier.spli_name');
+
+      const results = await queryBuilder.getRawMany();
+      return results.map((item) => ({
+        spli_id: item.spli_id,
+        spli_name: item.spli_name,
+        total_quantity: parseFloat(item.total_quantity || 0),
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStockInBySupplier',
+        class: 'IngredientsService',
+        function: 'getStockInBySupplier',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Thống kê chi phí nhập kho theo nhà cung cấp
+   */
+  async getStockInCostBySupplier(
+    account: IAccount,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Array<{ spli_id: string; spli_name: string; total_cost: number }>> {
+    try {
+      const queryBuilder = this.stockInItemRepo
+        .createQueryBuilder('stockInItem')
+        .leftJoin('stockInItem.stockIn', 'stockIn')
+        .leftJoin('stockIn.supplier', 'supplier')
+        .select('supplier.spli_id', 'spli_id')
+        .addSelect('supplier.spli_name', 'spli_name')
+        .addSelect('SUM(stockInItem.stki_item_quantity_real * stockInItem.stki_item_price)', 'total_cost')
+        .where('stockIn.stki_date BETWEEN :startDate AND :endDate', { startDate, endDate })
+        .andWhere('stockInItem.stki_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .andWhere('stockInItem.deletedAt IS NULL AND stockIn.isDeleted = :isDeleted', { isDeleted: 0 })
+        .groupBy('supplier.spli_id, supplier.spli_name');
+
+      const results = await queryBuilder.getRawMany();
+      return results.map((item) => ({
+        spli_id: item.spli_id,
+        spli_name: item.spli_name,
+        total_cost: parseFloat(item.total_cost || 0),
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStockInCostBySupplier',
+        class: 'IngredientsService',
+        function: 'getStockInCostBySupplier',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Thống kê tồn kho theo danh mục nguyên liệu
+   */
+  async getInventoryByCategory(
+    account: IAccount,
+  ): Promise<Array<{ cat_igd_id: string; cat_igd_name: string; total_quantity: number }>> {
+    try {
+      const queryBuilder = this.ingredientRepoDas
+        .createQueryBuilder('ingredient')
+        .leftJoin('ingredient.category', 'category')
+        .leftJoin('ingredient.stockInItems', 'stockInItem', 'stockInItem.deletedAt IS NULL')
+        .leftJoin('ingredient.stockOutItems', 'stockOutItem', 'stockOutItem.deletedAt IS NULL')
+        .select('category.cat_igd_id', 'cat_igd_id')
+        .addSelect('category.cat_igd_name', 'cat_igd_name')
+        .addSelect(
+          'COALESCE(SUM(stockInItem.stki_item_quantity_real), 0) - COALESCE(SUM(stockOutItem.stko_item_quantity), 0)',
+          'total_quantity',
+        )
+        .where('ingredient.isDeleted = :isDeleted AND ingredient.igd_status = :igdStatus', {
+          isDeleted: 0,
+          igdStatus: 'enable',
+        })
+        .andWhere('ingredient.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .groupBy('category.cat_igd_id, category.cat_igd_name');
+
+      const results = await queryBuilder.getRawMany();
+      return results.map((item) => ({
+        cat_igd_id: item.cat_igd_id,
+        cat_igd_name: item.cat_igd_name,
+        total_quantity: parseFloat(item.total_quantity || 0),
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getInventoryByCategory',
+        class: 'IngredientsService',
+        function: 'getInventoryByCategory',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Thống kê chi phí nhập kho theo danh mục nguyên liệu
+   */
+  async getStockInCostByCategory(
+    account: IAccount,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Array<{ cat_igd_id: string; cat_igd_name: string; total_cost: number }>> {
+    try {
+      const queryBuilder = this.stockInItemRepo
+        .createQueryBuilder('stockInItem')
+        .leftJoin('stockInItem.ingredient', 'ingredient')
+        .leftJoin('ingredient.category', 'category')
+        .select('category.cat_igd_id', 'cat_igd_id')
+        .addSelect('category.cat_igd_name', 'cat_igd_name')
+        .addSelect('SUM(stockInItem.stki_item_quantity_real * stockInItem.stki_item_price)', 'total_cost')
+        .where('stockInItem.deletedAt IS NULL')
+        .andWhere('ingredient.isDeleted = :isDeleted AND ingredient.igd_status = :igdStatus', {
+          isDeleted: 0,
+          igdStatus: 'enable',
+        })
+        .andWhere('stockInItem.stki_item_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .groupBy('category.cat_igd_id, category.cat_igd_name');
+
+      const results = await queryBuilder.getRawMany();
+      return results.map((item) => ({
+        cat_igd_id: item.cat_igd_id,
+        cat_igd_name: item.cat_igd_name,
+        total_cost: parseFloat(item.total_cost || 0),
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStockInCostByCategory',
+        class: 'IngredientsService',
+        function: 'getStockInCostByCategory',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
+    }
+  }
+
+  /**
+   * Lấy danh sách nguyên liệu không hoạt động (không có xuất kho trong khoảng thời gian)
+   */
+  async getStagnantIngredients(
+    account: IAccount,
+    daysThreshold: number = 30,
+  ): Promise<Array<{ igd_id: string; igd_name: string }>> {
+    try {
+      const thresholdDate = new Date(Date.now() - daysThreshold * 24 * 60 * 60 * 1000);
+      const queryBuilder = this.ingredientRepoDas
+        .createQueryBuilder('ingredient')
+        .leftJoin('ingredient.stockOutItems', 'stockOutItem', 'stockOutItem.deletedAt IS NULL')
+        .leftJoin('stockOutItem.stockOut', 'stockOut')
+        .select('ingredient.igd_id', 'igd_id')
+        .addSelect('ingredient.igd_name', 'igd_name')
+        .where('ingredient.isDeleted = :isDeleted AND ingredient.igd_status = :igdStatus', {
+          isDeleted: 0,
+          igdStatus: 'enable',
+        })
+        .andWhere('ingredient.igd_res_id = :restaurantId', { restaurantId: account.account_restaurant_id })
+        .andWhere('stockOut.stko_date < :thresholdDate OR stockOut.stko_date IS NULL', { thresholdDate })
+        .groupBy('ingredient.igd_id, ingredient.igd_name');
+
+      const results = await queryBuilder.getRawMany();
+      return results.map((item) => ({
+        igd_id: item.igd_id,
+        igd_name: item.igd_name,
+      }));
+    } catch (error) {
+      saveLogSystem({
+        action: 'getStagnantIngredients',
+        class: 'IngredientsService',
+        function: 'getStagnantIngredients',
+        message: error.message,
+        time: new Date(),
+        error,
+        type: 'error',
+      });
+      throw new ServerErrorDefault(error);
     }
   }
 
