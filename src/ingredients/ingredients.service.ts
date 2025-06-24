@@ -398,12 +398,15 @@ export class IngredientsService implements IIngredientsService {
     Array<{ igd_id: string; igd_name: string; total_quantity: number }>
   > {
     try {
+      //lấy tên đơn vị đo 
       const queryBuilder = this.ingredientRepoDas
         .createQueryBuilder('ingredient')
         .leftJoin('ingredient.stockInItems', 'stockInItem', 'stockInItem.deletedAt IS NULL')
         .leftJoin('ingredient.stockOutItems', 'stockOutItem', 'stockOutItem.deletedAt IS NULL')
+        .leftJoin('ingredient.unit', 'unit')
         .select('ingredient.igd_id', 'igd_id')
         .addSelect('ingredient.igd_name', 'igd_name')
+        .addSelect('unit.unt_name', 'unt_name')
         .addSelect(
           'COALESCE(SUM(stockInItem.stki_item_quantity_real), 0) - COALESCE(SUM(stockOutItem.stko_item_quantity), 0)',
           'total_quantity',
@@ -420,6 +423,7 @@ export class IngredientsService implements IIngredientsService {
         igd_id: item.igd_id,
         igd_name: item.igd_name,
         total_quantity: parseFloat(item.total_quantity || 0),
+        unt_name: item.unt_name || '',
       }));
     } catch (error) {
       saveLogSystem({
