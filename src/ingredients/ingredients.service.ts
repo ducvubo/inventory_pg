@@ -465,9 +465,7 @@ export class IngredientsService implements IIngredientsService {
         igd_id: item.igd_id,
         igd_name: item.igd_name,
         total_quantity: parseFloat(item.total_quantity || 0),
-        total_value: parseFloat(
-          ((+item.total_quantity || 0) * (+item.avg_price || 0)).toFixed(2)
-        ),
+        total_value: parseFloat(item.total_quantity || 0),
       }));
     } catch (error) {
       saveLogSystem({
