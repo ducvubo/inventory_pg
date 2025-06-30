@@ -11,10 +11,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { initElasticsearch } from './config/elasticsearch.config'
 import { initMinio } from './config/minio.config'
 import { sendMessageToKafka } from './utils/kafka'
-
+import * as morgan from 'morgan'
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
-
+  app.use(morgan("dev"))
   const configService = app.get(ConfigService)
 
   app.useGlobalPipes(new ValidationPipe())
